@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import markIcon from "./assets/mark.png";
 
 /* ---------- dados estáticos de apresentação ---------- */
 
@@ -508,7 +509,8 @@ export default function Landing() {
     <div className="landing">
       <nav className="topbar">
         <span className="logo">
-          ⚽ Hi-Lo <span className="accent">Stats</span>
+          <img className="logo-mark" src={markIcon} alt="Hi-Lo Stats" />
+          Hi-Lo <span className="accent">Stats</span>
         </span>
         <div className="topbar-links">
           <a href="#como-funciona">Como funciona</a>
