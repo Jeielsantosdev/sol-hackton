@@ -27,21 +27,7 @@ export interface GameData {
 
 export type StatCategory = "goals" | "corners" | "yellowCards" | "possession";
 
-export const CATEGORY_LABELS: Record<StatCategory, string> = {
-  goals: "Gols na partida",
-  corners: "Escanteios na partida",
-  yellowCards: "Cartões amarelos",
-  possession: "Posse de bola do mandante (%)",
-};
-
-// unidade curta para montar frases ("11 escanteios", "54% de posse")
-export const CATEGORY_UNITS: Record<StatCategory, string> = {
-  goals: "gols",
-  corners: "escanteios",
-  yellowCards: "cartões amarelos",
-  possession: "% de posse",
-};
-
+// labels e unidades das categorias ficam no dicionário i18n (i18n.tsx)
 export const CATEGORY_ICONS: Record<StatCategory, string> = {
   goals: "⚽",
   corners: "🚩",
