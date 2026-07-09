@@ -806,7 +806,8 @@ footer a:hover {
 
 .section .grid-3,
 .section .pipeline,
-.section .roadmap {
+.section .roadmap,
+.section .not-grid {
   margin-top: 20px;
 }
 
@@ -939,7 +940,8 @@ footer a:hover {
   text-align: center;
 }
 
-.hero-teaser .hero-preview {
+.hero-teaser .hero-preview,
+.demo-board .hero-preview {
   margin-top: 0;
 }
 
@@ -1043,6 +1045,109 @@ footer a:hover {
   }
 }
 
+/* ---------- demo automática didática ---------- */
+
+.demo-board {
+  width: 100%;
+  max-width: 720px;
+  margin: 24px auto 0;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pill-btn.static {
+  cursor: default;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: transform 0.2s ease, opacity 0.3s ease;
+}
+
+.pill-btn.static:hover {
+  transform: none;
+}
+
+.pill-btn.demo-press {
+  transform: scale(0.93);
+  box-shadow: 0 0 0 3px rgba(250, 250, 250, 0.15);
+}
+
+.pill-btn.demo-dim {
+  opacity: 0.35;
+}
+
+.demo-cursor {
+  position: absolute;
+  right: -8px;
+  bottom: -18px;
+  font-size: 1.5rem;
+  line-height: 1;
+  pointer-events: none;
+  animation: cursor-tap 0.7s ease-in-out infinite;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+
+@keyframes cursor-tap {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.demo-caption {
+  min-height: 1.5em;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--muted);
+  animation: rise-in 0.35s ease both;
+}
+
+.demo-caption b {
+  color: var(--text-2);
+}
+
+/* ---------- grade de negações ---------- */
+
+.not-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.not-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.not-x {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--red);
+  color: #fca5a5;
+  background: rgba(219, 36, 36, 0.1);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
 /* ---------- ticker de resultados ---------- */
 
 .ticker {
@@ -1076,9 +1181,37 @@ footer a:hover {
   color: var(--text-2);
 }
 
-.ticker-stat {
-  font-size: 0.78rem;
+.ticker-chip {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
   color: var(--muted);
+  background: var(--surface);
+  white-space: nowrap;
+}
+
+.ticker-chip.k-goal {
+  color: var(--mint);
+  border-color: rgba(62, 232, 181, 0.4);
+  background: rgba(62, 232, 181, 0.07);
+}
+
+.ticker-chip.k-corner {
+  color: #ff8a4d;
+  border-color: rgba(214, 76, 0, 0.5);
+  background: rgba(214, 76, 0, 0.1);
+}
+
+.ticker-chip.k-card {
+  color: var(--amber);
+  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(251, 191, 36, 0.07);
+}
+
+.ticker-chip.k-poss {
+  color: var(--text-2);
 }
 
 @keyframes ticker-scroll {
@@ -1292,14 +1425,64 @@ footer a:hover {
   transform: none;
 }
 
+/* cards entram escalonados quando a seção aparece */
+.reveal :is(.grid-3, .pipeline, .roadmap, .not-grid) > * {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s ease, transform 0.5s ease, border-color 0.15s ease;
+}
+
+.reveal.in :is(.grid-3, .pipeline, .roadmap, .not-grid) > * {
+  opacity: 1;
+  transform: none;
+}
+
+.reveal.in :is(.grid-3, .pipeline, .roadmap, .not-grid) > :nth-child(2) {
+  transition-delay: 0.08s;
+}
+
+.reveal.in :is(.grid-3, .pipeline, .roadmap, .not-grid) > :nth-child(3) {
+  transition-delay: 0.16s;
+}
+
+.reveal.in :is(.grid-3, .pipeline, .roadmap, .not-grid) > :nth-child(4) {
+  transition-delay: 0.24s;
+}
+
+.reveal.in :is(.grid-3, .pipeline, .roadmap, .not-grid) > :nth-child(5) {
+  transition-delay: 0.32s;
+}
+
+.reveal.in :is(.grid-3, .pipeline, .roadmap, .not-grid) > :nth-child(6) {
+  transition-delay: 0.4s;
+}
+
+.cta-final .btn.primary {
+  animation: cta-glow 2.6s ease-in-out infinite;
+}
+
+@keyframes cta-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(214, 76, 0, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(214, 76, 0, 0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .reveal {
+  .reveal,
+  .reveal :is(.grid-3, .pipeline, .roadmap, .not-grid) > * {
     opacity: 1;
     transform: none;
     transition: none;
   }
 
-  .ticker-track {
+  .ticker-track,
+  .cta-final .btn.primary,
+  .demo-cursor,
+  .demo-caption {
     animation: none;
   }
 
@@ -1313,6 +1496,10 @@ footer a:hover {
 @media (max-width: 960px) {
   .pipeline,
   .roadmap {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .not-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 
@@ -1332,7 +1519,8 @@ footer a:hover {
 
   .grid-3,
   .pipeline,
-  .roadmap {
+  .roadmap,
+  .not-grid {
     grid-template-columns: 1fr;
   }
 

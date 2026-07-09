@@ -3,14 +3,24 @@ import { useEffect, useRef, useState } from "react";
 /* ---------- dados estáticos de apresentação ---------- */
 
 const TICKER = [
-  { match: "Brasil 2×1 Argentina", stat: "🚩 11 escanteios" },
-  { match: "França 0×0 Japão", stat: "🟨 3 amarelos" },
-  { match: "EUA 3×2 México", stat: "⚽ 5 gols" },
-  { match: "Espanha 1×1 Alemanha", stat: "🕐 54% posse" },
-  { match: "Marrocos 2×0 Croácia", stat: "🚩 7 escanteios" },
-  { match: "Inglaterra 4×1 Gana", stat: "⚽ 5 gols" },
-  { match: "Portugal 2×2 Uruguai", stat: "🟨 6 amarelos" },
-  { match: "Senegal 1×0 Polônia", stat: "🕐 48% posse" },
+  { match: "Brasil 2×1 Argentina", stat: "🚩 11 escanteios", kind: "corner" },
+  { match: "França 0×0 Japão", stat: "🟨 3 amarelos", kind: "card" },
+  { match: "EUA 3×2 México", stat: "⚽ 5 gols", kind: "goal" },
+  { match: "Espanha 1×1 Alemanha", stat: "🕐 54% posse", kind: "poss" },
+  { match: "Marrocos 2×0 Croácia", stat: "🚩 7 escanteios", kind: "corner" },
+  { match: "Inglaterra 4×1 Gana", stat: "⚽ 5 gols", kind: "goal" },
+  { match: "Portugal 2×2 Uruguai", stat: "🟨 6 amarelos", kind: "card" },
+  { match: "Senegal 1×0 Polônia", stat: "🕐 48% posse", kind: "poss" },
+];
+
+// grade de negações, estilo "o que o produto NÃO é"
+const NOTS = [
+  "Apostas com dinheiro real",
+  "Cadastro ou e-mail",
+  "Carteira cripto obrigatória",
+  "Pay-to-win",
+  "Instalação de app",
+  "Letras miúdas",
 ];
 
 const STEPS = [
@@ -251,6 +261,223 @@ function HeroTeaser() {
   );
 }
 
+/* ---------- demo automática didática ---------- */
+
+interface DemoRound {
+  cat: string;
+  unit: string;
+  prevTeams: string;
+  prev: number;
+  nextTeams: string;
+  next: number;
+  pick: "higher" | "lower";
+}
+
+const DEMO_ROUNDS: DemoRound[] = [
+  {
+    cat: "🚩 Escanteios",
+    unit: "escanteios",
+    prevTeams: "Brasil vs Argentina",
+    prev: 11,
+    nextTeams: "França vs Japão",
+    next: 8,
+    pick: "lower",
+  },
+  {
+    cat: "⚽ Gols",
+    unit: "gols",
+    prevTeams: "França vs Japão",
+    prev: 2,
+    nextTeams: "EUA vs México",
+    next: 5,
+    pick: "higher",
+  },
+  {
+    cat: "🟨 Cartões amarelos",
+    unit: "cartões",
+    prevTeams: "EUA vs México",
+    prev: 6,
+    nextTeams: "Espanha vs Alemanha",
+    next: 3,
+    pick: "lower",
+  },
+];
+
+type DemoStage = "look" | "press" | "reveal" | "done";
+
+function AutoDemo() {
+  const [i, setI] = useState(0);
+  const [stage, setStage] = useState<DemoStage>("look");
+  const [streak, setStreak] = useState(0);
+  const [running, setRunning] = useState(false);
+  const boardRef = useRef<HTMLDivElement>(null);
+
+  // só anima quando o bloco está visível na tela
+  useEffect(() => {
+    const el = boardRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([e]) => setRunning(e.isIntersecting),
+      { threshold: 0.35 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!running) return;
+    const durations: Record<DemoStage, number> = {
+      look: 1400,
+      press: 800,
+      reveal: 1700,
+      done: 2400,
+    };
+    const t = window.setTimeout(() => {
+      if (stage === "look") {
+        setStage("press");
+      } else if (stage === "press") {
+        setStreak((s) => s + 1);
+        setStage("reveal");
+      } else if (stage === "reveal") {
+        if (i === DEMO_ROUNDS.length - 1) {
+          setStage("done");
+        } else {
+          setI(i + 1);
+          setStage("look");
+        }
+      } else {
+        setI(0);
+        setStreak(0);
+        setStage("look");
+      }
+    }, durations[stage]);
+    return () => window.clearTimeout(t);
+  }, [stage, i, running]);
+
+  const r = DEMO_ROUNDS[i];
+  const revealed = stage === "reveal" || stage === "done";
+  const pickLabel = r.pick === "higher" ? "MAIOR ⬆" : "MENOR ⬇";
+
+  const caption =
+    stage === "look" ? (
+      <>
+        <b>Passo 1</b> — veja a última partida: <b>{r.prev} {r.unit}</b>
+      </>
+    ) : stage === "press" ? (
+      <>
+        <b>Passo 2</b> — palpite: a próxima vem <b>{pickLabel}</b>
+      </>
+    ) : stage === "reveal" ? (
+      <>
+        <b>Passo 3</b> — foram <b>{r.next} {r.unit}</b>: acertou! 🔥 sobe para{" "}
+        <b>{streak}</b>
+      </>
+    ) : (
+      <>
+        🔥 Sequência de <b>{streak}</b>! No jogo real, você segue até errar.
+      </>
+    );
+
+  return (
+    <div className="demo-board" ref={boardRef} aria-hidden="true">
+      <div className="teaser-head">
+        <span className="teaser-title">
+          <span className="live-dot" /> Rodada de exemplo — assista
+        </span>
+        <span className="teaser-streak mono">🔥 {streak}</span>
+      </div>
+
+      <div className="teaser-cat">{r.cat}</div>
+
+      <div className="hero-preview">
+        <div className="preview-card">
+          <span className="preview-label">Última partida</span>
+          <span className="preview-teams">{r.prevTeams}</span>
+          <span className="preview-value mono">{r.prev}</span>
+        </div>
+
+        <div className="preview-vs">
+          <span
+            className={`pill-btn static hi ${
+              stage !== "look" && r.pick === "higher" ? "demo-press" : ""
+            } ${stage !== "look" && r.pick !== "higher" ? "demo-dim" : ""}`}
+          >
+            ⬆ MAIOR
+            {r.pick === "higher" && stage === "press" && (
+              <span className="demo-cursor">👆</span>
+            )}
+          </span>
+          <span
+            className={`pill-btn static lo ${
+              stage !== "look" && r.pick === "lower" ? "demo-press" : ""
+            } ${stage !== "look" && r.pick !== "lower" ? "demo-dim" : ""}`}
+          >
+            ⬇ MENOR
+            {r.pick === "lower" && stage === "press" && (
+              <span className="demo-cursor">👆</span>
+            )}
+          </span>
+        </div>
+
+        <div className={`preview-card ${revealed ? "" : "dashed"}`}>
+          <span className="preview-label">Próxima partida</span>
+          <span className="preview-teams">{r.nextTeams}</span>
+          <span
+            className={`preview-value mono ${revealed ? "flip-ok" : "accent"}`}
+          >
+            {revealed ? r.next : "?"}
+          </span>
+        </div>
+      </div>
+
+      <div className="demo-caption" key={`${i}-${stage}`}>
+        {caption}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- contador animado ---------- */
+
+function CountUp({ to, suffix = "" }: { to: number; suffix?: string }) {
+  const ref = useRef<HTMLElement>(null);
+  const [val, setVal] = useState(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let raf = 0;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (!e.isIntersecting) return;
+        io.disconnect();
+        const t0 = performance.now();
+        const dur = 1100;
+        const tick = (t: number) => {
+          const p = Math.min(1, (t - t0) / dur);
+          // ease-out cúbico para desacelerar no final
+          setVal(Math.round(to * (1 - Math.pow(1 - p, 3))));
+          if (p < 1) raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+      },
+      { threshold: 0.6 }
+    );
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, [to]);
+
+  return (
+    <strong ref={ref}>
+      {val}
+      {suffix}
+    </strong>
+  );
+}
+
 /* ---------- reveal on scroll ---------- */
 
 function useReveal() {
@@ -320,11 +547,11 @@ export default function Landing() {
 
         <div className="stats-strip mono">
           <div>
-            <strong>104</strong>
+            <CountUp to={104} />
             <span>jogos da Copa</span>
           </div>
           <div>
-            <strong>4</strong>
+            <CountUp to={4} />
             <span>categorias de stats</span>
           </div>
           <div>
@@ -343,7 +570,7 @@ export default function Landing() {
           {[...TICKER, ...TICKER].map((t, i) => (
             <span className="ticker-item" key={i}>
               <span className="ticker-match">{t.match}</span>
-              <span className="ticker-stat mono">{t.stat}</span>
+              <span className={`ticker-chip mono k-${t.kind}`}>{t.stat}</span>
             </span>
           ))}
         </div>
@@ -368,6 +595,7 @@ export default function Landing() {
             </article>
           ))}
         </div>
+        <AutoDemo />
       </section>
 
       <section className="section reveal">
@@ -446,6 +674,24 @@ export default function Landing() {
               <h3>{r.title}</h3>
               <p>{r.text}</p>
             </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="section reveal">
+        <span className="section-kicker mono">// sem pegadinha</span>
+        <h2>
+          O que o Hi-Lo Stats <span className="accent">não</span> é
+        </h2>
+        <p className="section-lead">
+          Jogo gratuito de entretenimento sobre dados reais. Nada além disso.
+        </p>
+        <div className="not-grid">
+          {NOTS.map((n) => (
+            <div className="not-card" key={n}>
+              <span className="not-x mono">×</span>
+              {n}
+            </div>
           ))}
         </div>
       </section>
