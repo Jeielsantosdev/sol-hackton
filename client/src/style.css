@@ -1,20 +1,21 @@
-/* Design system inspirado em welikesports.com:
-   zinc escuro + brand laranja #d64c00, Inter para UI e JetBrains Mono
-   para números, cantos .5rem, pills e grade sutil de fundo */
+/* Design system: tema escuro com fundo marinho #0B1D3A, texto claro,
+   brand verde #00A24A e acento amarelo #FFCC00. Inter para UI e
+   JetBrains Mono para números, cantos .5rem, pills e grade sutil de fundo */
 
 :root {
-  --bg: #09090b;
-  --surface: #18181b;
-  --surface-2: #0a0a0a;
-  --border: #27272a;
-  --text: #fafafa;
-  --text-2: #e4e4e7;
-  --muted: #71717a;
-  --brand: #d64c00;
-  --brand-hover: #f05a00;
+  --bg: #0a0e16;
+  --surface: #0a0e16;
+  --surface-2: #0e1521;
+  --border: #263c60;
+  --text: #f4f7fb;
+  --text-2: #c4d0e0;
+  --muted: #8798b0;
+  --brand: #00a24a;
+  --brand-hover: #12b356;
   --mint: #3ee8b5;
-  --amber: #fbbf24;
-  --red: #db2424;
+  --amber: #ffcc00;
+  --amber-ink: #ffcc00;
+  --red: #ef4444;
   --radius: 0.5rem;
 }
 
@@ -27,8 +28,8 @@ body {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background-color: var(--bg);
   background-image:
-    linear-gradient(90deg, rgba(228, 228, 231, 0.045) 1px, transparent 0),
-    linear-gradient(180deg, rgba(228, 228, 231, 0.045) 1px, transparent 0);
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 0),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045) 1px, transparent 0);
   background-size: 44px 44px;
   color: var(--text);
   min-height: 100vh;
@@ -92,7 +93,7 @@ h1 .accent {
 
 .badge.mock {
   border-color: var(--amber);
-  color: var(--amber);
+  color: var(--amber-ink);
   background: rgba(251, 191, 36, 0.08);
 }
 
@@ -377,6 +378,7 @@ button.hi:hover {
 button.lo {
   background: var(--red);
   border-color: var(--red);
+  color: #fff;
 }
 
 button.lo:hover {
@@ -386,6 +388,7 @@ button.lo:hover {
 button.primary {
   background: var(--brand);
   border-color: var(--brand);
+  color: #fff;
 }
 
 button.primary:hover {
@@ -430,7 +433,7 @@ button.primary:hover {
 .result.push {
   background: rgba(251, 191, 36, 0.1);
   border: 1px solid var(--amber);
-  color: var(--amber);
+  color: var(--amber-ink);
 }
 
 .endgame {
@@ -488,7 +491,7 @@ footer a:hover {
   align-items: center;
   gap: 16px;
   padding: 14px 4px;
-  background: rgba(9, 9, 11, 0.85);
+  background: rgba(10, 14, 22, 0.85);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
 }
@@ -511,9 +514,20 @@ footer a:hover {
 }
 
 .logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 1.15rem;
   font-weight: 800;
   letter-spacing: -0.02em;
+}
+
+.logo-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  object-fit: cover;
+  display: block;
 }
 
 .accent {
@@ -547,6 +561,7 @@ footer a:hover {
 .btn.primary {
   background: var(--brand);
   border-color: var(--brand);
+  color: #fff;
 }
 
 .btn.primary:hover {
@@ -586,8 +601,8 @@ footer a:hover {
   height: 420px;
   background: radial-gradient(
     ellipse at center,
-    rgba(214, 76, 0, 0.18) 0%,
-    rgba(214, 76, 0, 0.05) 45%,
+    rgba(0, 162, 74, 0.18) 0%,
+    rgba(0, 162, 74, 0.05) 45%,
     transparent 70%
   );
   pointer-events: none;
@@ -958,7 +973,7 @@ footer a:hover {
 }
 
 .teaser-feedback.bad {
-  color: #fca5a5;
+  color: #b91c1c;
 }
 
 .teaser-done {
@@ -1012,7 +1027,7 @@ footer a:hover {
 .pill-btn.lo {
   background: var(--red);
   border-color: var(--red);
-  color: var(--text);
+  color: #fff;
 }
 
 .preview-value.accent {
@@ -1025,7 +1040,7 @@ footer a:hover {
 }
 
 .flip-bad {
-  color: #fca5a5;
+  color: #b91c1c;
   animation: shake 0.35s ease;
 }
 
@@ -1076,7 +1091,7 @@ footer a:hover {
 
 .pill-btn.demo-press {
   transform: scale(0.93);
-  box-shadow: 0 0 0 3px rgba(250, 250, 250, 0.15);
+  box-shadow: 0 0 0 3px rgba(11, 29, 58, 0.12);
 }
 
 .pill-btn.demo-dim {
@@ -1205,7 +1220,7 @@ footer a:hover {
 }
 
 .ticker-chip.k-card {
-  color: var(--amber);
+  color: var(--amber-ink);
   border-color: rgba(251, 191, 36, 0.4);
   background: rgba(251, 191, 36, 0.07);
 }
@@ -1252,7 +1267,7 @@ footer a:hover {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: rgba(214, 76, 0, 0.15);
+  background: rgba(0, 162, 74, 0.15);
   border: 1px solid var(--brand);
   color: var(--brand);
   font-size: 0.85rem;
@@ -1464,10 +1479,10 @@ footer a:hover {
 @keyframes cta-glow {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(214, 76, 0, 0.45);
+    box-shadow: 0 0 0 0 rgba(0, 162, 74, 0.45);
   }
   50% {
-    box-shadow: 0 0 0 12px rgba(214, 76, 0, 0);
+    box-shadow: 0 0 0 12px rgba(0, 162, 74, 0);
   }
 }
 
@@ -1590,4 +1605,49 @@ footer a:hover {
   .scoreboard > div {
     padding: 10px 18px;
   }
+}
+
+/* ---------- troca de idioma ---------- */
+
+.lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.lang-toggle button {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  font: inherit;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.lang-toggle button:hover {
+  color: var(--text);
+}
+
+.lang-toggle button.on {
+  color: var(--mint);
+}
+
+.lang-sep {
+  color: var(--border);
+}
+
+.topbar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.game-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }

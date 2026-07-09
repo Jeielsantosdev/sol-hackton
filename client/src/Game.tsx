@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CATEGORY_ICONS,
-  CATEGORY_LABELS,
-  CATEGORY_UNITS,
   statValue,
   type GameData,
   type GameMatch,
   type StatCategory,
 } from "./types";
+import { LangToggle, useLang, type Dict } from "./i18n";
 
 type Guess = "higher" | "lower";
 type Phase = "loading" | "error" | "playing" | "reveal" | "gameover" | "won";
@@ -30,6 +29,7 @@ function mulberry32(seed: number) {
 }
 
 export default function Game() {
+  const { t } = useLang();
   const [data, setData] = useState<GameData | null>(null);
   const [phase, setPhase] = useState<Phase>("loading");
   const [error, setError] = useState("");
@@ -84,14 +84,14 @@ export default function Game() {
   }, [matches, seed]);
 
   if (phase === "loading") {
-    return <div className="shell center">Carregando partidas…</div>;
+    return <div className="shell center">{t.game.loading}</div>;
   }
   if (phase === "error") {
     return (
       <div className="shell center">
-        <p>Não foi possível carregar as partidas.</p>
+        <p>{t.game.errorTitle}</p>
         <p className="dim">{error}</p>
-        <button onClick={() => location.reload()}>Tentar de novo</button>
+        <button onClick={() => location.reload()}>{t.game.retry}</button>
       </div>
     );
   }
@@ -102,6 +102,7 @@ export default function Game() {
   const currentValue = statValue(current, category);
   const nextValue = next ? statValue(next, category) : 0;
   const totalRounds = matches.length - 1;
+  const unit = t.game.categoryUnits[category];
 
   function guess(g: Guess) {
     if (phase !== "playing" || !next) return;
@@ -148,10 +149,7 @@ export default function Game() {
   }
 
   async function share() {
-    const text =
-      `⚽ Hi-Lo Stats · Copa 2026\n` +
-      `🔥 Sequência: ${streak} | 🏆 Recorde: ${best}\n` +
-      `Sobrevivi a ${round + 1} de ${totalRounds} rodadas. Consegue mais?`;
+    const text = t.game.shareText(streak, best, round + 1, totalRounds);
     try {
       if (navigator.share) {
         await navigator.share({ text });
@@ -167,29 +165,32 @@ export default function Game() {
 
   const sourceBadge =
     data?.source === "txline"
-      ? `dados TxLINE · ${data.network}`
-      : "dados simulados (TxLINE offline)";
+      ? t.game.sourceTx(data.network ?? "devnet")
+      : t.game.sourceMock;
 
   return (
     <div className="shell">
       <header>
-        <a className="back-link" href="#/">← início</a>
+        <div className="game-topline">
+          <a className="back-link" href="#/">{t.game.back}</a>
+          <LangToggle />
+        </div>
         <h1>⚽ Hi-Lo <span className="accent">Stats</span></h1>
-        <p className="tagline">Copa 2026 · a próxima partida vem MAIOR ou menor?</p>
+        <p className="tagline">{t.game.tagline}</p>
         <span className={`badge ${data?.source}`}>{sourceBadge}</span>
       </header>
 
       <div className="scoreboard">
         <div>
-          <span className="label">Rodada</span>
+          <span className="label">{t.game.round}</span>
           <strong>{round + 1}/{totalRounds}</strong>
         </div>
         <div>
-          <span className="label">Sequência</span>
+          <span className="label">{t.game.streak}</span>
           <strong>🔥 {streak}</strong>
         </div>
         <div>
-          <span className="label">Recorde</span>
+          <span className="label">{t.game.best}</span>
           <strong>🏆 {best}</strong>
         </div>
       </div>
@@ -197,28 +198,19 @@ export default function Game() {
       {showHelp && (
         <aside className="help-box">
           <div className="help-head">
-            <strong>💡 Como jogar</strong>
+            <strong>{t.game.helpTitle}</strong>
             <button
               className="help-close"
               onClick={dismissHelp}
-              aria-label="Fechar ajuda"
+              aria-label={t.game.helpCloseAria}
             >
-              ✕ fechar
+              {t.game.helpClose}
             </button>
           </div>
           <ol>
-            <li>
-              Veja a estatística da <strong>partida anterior</strong> (cartão da
-              esquerda).
-            </li>
-            <li>
-              Palpite: a <strong>próxima partida</strong> terá um número{" "}
-              <strong>maior ⬆</strong> ou <strong>menor ⬇</strong>?
-            </li>
-            <li>
-              Acertou, a sequência 🔥 cresce. Errou, fim de jogo. Empate mantém
-              a sequência.
-            </li>
+            {t.game.helpItems.map((item, i) => (
+              <li key={i}>{item}</li>
+            ))}
           </ol>
         </aside>
       )}
@@ -226,10 +218,9 @@ export default function Game() {
       <div className="category">
         <span className="icon">{CATEGORY_ICONS[category]}</span>
         <div className="category-text">
-          <strong>{CATEGORY_LABELS[category]}</strong>
+          <strong>{t.game.categoryLabels[category]}</strong>
           <span className="category-question">
-            A próxima partida terá mais ou menos que{" "}
-            <b className="mono">{currentValue}</b> {CATEGORY_UNITS[category]}?
+            {t.game.categoryQuestion(currentValue, unit)}
           </span>
         </div>
       </div>
@@ -239,19 +230,20 @@ export default function Game() {
           match={current}
           value={currentValue}
           revealed
-          label="Última partida"
-          unit={CATEGORY_UNITS[category]}
+          label={t.game.lastMatch}
+          unit={unit}
+          t={t}
         />
         <div className="vs">
           {phase === "playing" ? (
             <div className="guess-buttons">
               <button className="hi" onClick={() => guess("higher")}>
-                ⬆ MAIOR
-                <small>mais que {currentValue}</small>
+                {t.game.higher}
+                <small>{t.game.moreThan(currentValue)}</small>
               </button>
               <button className="lo" onClick={() => guess("lower")}>
-                ⬇ MENOR
-                <small>menos que {currentValue}</small>
+                {t.game.lower}
+                <small>{t.game.lessThan(currentValue)}</small>
               </button>
             </div>
           ) : (
@@ -260,7 +252,8 @@ export default function Game() {
               guess={lastGuess}
               current={currentValue}
               next={nextValue}
-              unit={CATEGORY_UNITS[category]}
+              unit={unit}
+              t={t}
             />
           )}
         </div>
@@ -268,40 +261,32 @@ export default function Game() {
           match={next}
           value={nextValue}
           revealed={phase !== "playing"}
-          label="Próxima partida"
-          unit={CATEGORY_UNITS[category]}
+          label={t.game.nextMatch}
+          unit={unit}
+          t={t}
         />
       </div>
 
       {phase === "reveal" && (
         <button className="primary" onClick={nextRound}>
-          {lastResult?.correct ? "Próxima rodada →" : "Ver resultado"}
+          {lastResult?.correct ? t.game.nextRound : t.game.seeResult}
         </button>
       )}
 
       {(phase === "gameover" || phase === "won") && (
         <div className="endgame">
-          <h2>{phase === "won" ? "🏆 Você zerou os 104 jogos!" : "💀 Fim de jogo!"}</h2>
-          <p>
-            Sequência final: <strong>{streak}</strong> · Acertos:{" "}
-            <strong>{score}</strong> de <strong>{round + 1}</strong> rodadas
-          </p>
+          <h2>{phase === "won" ? t.game.wonTitle : t.game.lostTitle}</h2>
+          <p>{t.game.summary(streak, score, round + 1)}</p>
           <div className="endgame-actions">
             <button className="primary" onClick={share}>
-              {copied ? "✓ Copiado!" : "📣 Compartilhar placar"}
+              {copied ? t.game.copied : t.game.shareBtn}
             </button>
-            <button onClick={restart}>↻ Jogar de novo</button>
+            <button onClick={restart}>{t.game.playAgain}</button>
           </div>
         </div>
       )}
 
-      <footer>
-        Dados de partidas via{" "}
-        <a href="https://txline.txodds.com" target="_blank" rel="noreferrer">
-          TxLINE
-        </a>{" "}
-        (TxODDS) com ancoragem na Solana
-      </footer>
+      <footer>{t.game.gameFooter}</footer>
     </div>
   );
 }
@@ -312,12 +297,14 @@ function MatchCard({
   revealed,
   label,
   unit,
+  t,
 }: {
   match?: GameMatch;
   value: number;
   revealed: boolean;
   label: string;
   unit: string;
+  t: Dict;
 }) {
   if (!match) return <div className="card" />;
   return (
@@ -332,9 +319,11 @@ function MatchCard({
       <div className="value">{revealed ? value : "?"}</div>
       <div className="value-unit">{unit}</div>
       {revealed ? (
-        <div className="scoreline">placar: {match.stats.goals[0]} × {match.stats.goals[1]}</div>
+        <div className="scoreline">
+          {t.game.scoreline(match.stats.goals[0], match.stats.goals[1])}
+        </div>
       ) : (
-        <div className="scoreline dim-hint">qual será o número?</div>
+        <div className="scoreline dim-hint">{t.game.hiddenHint}</div>
       )}
     </div>
   );
@@ -346,12 +335,14 @@ function ResultBanner({
   current,
   next,
   unit,
+  t,
 }: {
   result: RoundResult | null;
   guess: Guess | null;
   current: number;
   next: number;
   unit: string;
+  t: Dict;
 }) {
   if (!result) return null;
   const cmp = next > current ? ">" : next < current ? "<" : "=";
@@ -363,25 +354,20 @@ function ResultBanner({
   if (result.push) {
     return (
       <div className="result push">
-        🤝 Deu igual! {detail}
-        <small>Empate não conta ponto, mas a sequência continua.</small>
+        {t.game.resultPush} {detail}
+        <small>{t.game.resultPushNote}</small>
       </div>
     );
   }
   return result.correct ? (
     <div className="result ok">
-      ✅ Acertou! {detail}
-      <small>
-        Veio {cmp === ">" ? "maior" : "menor"}, como você palpitou.
-      </small>
+      {t.game.resultOk} {detail}
+      <small>{t.game.resultOkNote(cmp === ">")}</small>
     </div>
   ) : (
     <div className="result bad">
-      ❌ Errou! {detail}
-      <small>
-        Você palpitou {guess === "higher" ? "maior" : "menor"}, mas foram{" "}
-        {next} {unit}.
-      </small>
+      {t.game.resultBad} {detail}
+      <small>{t.game.resultBadNote(guess === "higher", next, unit)}</small>
     </div>
   );
 }
