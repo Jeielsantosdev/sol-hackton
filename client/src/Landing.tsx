@@ -437,8 +437,7 @@ export default function Landing() {
         links={[
           { label: t.nav.home, href: "#/", active: true },
           { label: t.nav.how, href: "#como-funciona" },
-          { label: t.nav.leagues, href: "#/ligas" },
-          { label: t.nav.profile, href: "#/perfil" },
+          { label: t.nav.tech, href: "#tecnologia" },
           { label: t.nav.vision, href: "#roadmap" },
           { label: t.nav.faq, href: "#faq" },
         ]}
