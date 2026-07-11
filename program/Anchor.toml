@@ -1,0 +1,21 @@
+[toolchain]
+
+[features]
+resolution = false
+skip-lint = false
+
+[programs.localnet]
+oddies_bet = "4Ns6amhKn6D3DXBNDuFPngFM6UpV3N54JNQD5wXAt84E"
+
+[programs.devnet]
+oddies_bet = "4Ns6amhKn6D3DXBNDuFPngFM6UpV3N54JNQD5wXAt84E"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
