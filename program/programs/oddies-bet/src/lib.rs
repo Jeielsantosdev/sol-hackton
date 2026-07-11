@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 use anchor_spl::token::{self, Burn, Mint, MintTo, SetAuthority, Token, TokenAccount};
 
-declare_id!("4Ns6amhKn6D3DXBNDuFPngFM6UpV3N54JNQD5wXAt84E");
+declare_id!("F4xhKysY8SrNwfqLZxyuJrZCWW8KPVbTjZWb4HHtD4ZA");
 
 pub const MAX_OUTCOMES: usize = 8;
 pub const BPS_DENOMINATOR: u64 = 10_000;
@@ -12,6 +12,8 @@ pub mod oddies_bet {
     use super::*;
 
     /// Cria a config global: quem administra, para onde vai a taxa e qual a taxa (ex.: 1000 = 10%).
+    /// Só a upgrade authority do programa pode chamar (evita que alguém inicialize primeiro
+    /// e vire authority permanente).
     pub fn initialize(ctx: Context<Initialize>, fee_bps: u16) -> Result<()> {
         require!(fee_bps as u64 <= BPS_DENOMINATOR, BetError::InvalidFee);
         let config = &mut ctx.accounts.config;
@@ -34,6 +36,7 @@ pub mod oddies_bet {
         outcome_count: u8,
         odds_bps: [u64; MAX_OUTCOMES],
         close_ts: i64,
+        resolve_after_ts: i64,
     ) -> Result<()> {
         require!(
             outcome_count >= 2 && (outcome_count as usize) <= MAX_OUTCOMES,
@@ -41,6 +44,9 @@ pub mod oddies_bet {
         );
         let now = Clock::get()?.unix_timestamp;
         require!(close_ts > now, BetError::CloseInPast);
+        // close_ts é o início da partida; resolve_after_ts precisa dar tempo dela terminar
+        // de verdade (piso on-chain contra um resolve_market prematuro do backend).
+        require!(resolve_after_ts > close_ts, BetError::InvalidResolveWindow);
         if kind == MarketKind::HouseBacked {
             for i in 0..outcome_count as usize {
                 // Odds incluem o stake de volta, então precisam ser > 1x.
@@ -58,6 +64,7 @@ pub mod oddies_bet {
         market.pools = [0; MAX_OUTCOMES];
         market.liabilities = [0; MAX_OUTCOMES];
         market.close_ts = close_ts;
+        market.resolve_after_ts = resolve_after_ts;
         market.winning_outcome = 0;
         market.payout_pool = 0;
         market.outstanding = 0;
@@ -80,13 +87,15 @@ pub mod oddies_bet {
     }
 
     /// Deposita liquidez da casa no vault (necessário antes de aceitar apostas HouseBacked).
+    /// Só a authority: dinheiro mandado por qualquer outra wallet ficaria preso no vault,
+    /// só sacável pela authority via withdraw_house.
     pub fn fund_house(ctx: Context<FundHouse>, amount: u64) -> Result<()> {
         require!(amount > 0, BetError::ZeroAmount);
         system_program::transfer(
             CpiContext::new(
                 ctx.accounts.system_program.to_account_info(),
                 system_program::Transfer {
-                    from: ctx.accounts.funder.to_account_info(),
+                    from: ctx.accounts.authority.to_account_info(),
                     to: ctx.accounts.vault.to_account_info(),
                 },
             ),
@@ -222,7 +231,7 @@ pub mod oddies_bet {
         let market = &mut ctx.accounts.market;
         require!(market.state == MarketState::Open, BetError::MarketNotOpen);
         let now = Clock::get()?.unix_timestamp;
-        require!(now >= market.close_ts, BetError::MatchNotFinished);
+        require!(now >= market.resolve_after_ts, BetError::MatchNotFinished);
         require!(winning_outcome < market.outcome_count, BetError::InvalidOutcome);
 
         let total_net: u64 = market
@@ -361,6 +370,28 @@ pub mod oddies_bet {
         )?;
         Ok(())
     }
+
+    /// Atualiza a config (authority, team_wallet e/ou fee). Permite migrar a authority
+    /// pra uma multisig (ex.: Squads) sem precisar redeployar o programa.
+    pub fn update_config(
+        ctx: Context<UpdateConfig>,
+        new_authority: Option<Pubkey>,
+        new_team_wallet: Option<Pubkey>,
+        new_fee_bps: Option<u16>,
+    ) -> Result<()> {
+        let config = &mut ctx.accounts.config;
+        if let Some(authority) = new_authority {
+            config.authority = authority;
+        }
+        if let Some(team_wallet) = new_team_wallet {
+            config.team_wallet = team_wallet;
+        }
+        if let Some(fee_bps) = new_fee_bps {
+            require!(fee_bps as u64 <= BPS_DENOMINATOR, BetError::InvalidFee);
+            config.fee_bps = fee_bps;
+        }
+        Ok(())
+    }
 }
 
 /// Saldo do vault descontando o buffer de rent, que nunca é distribuído.
@@ -411,6 +442,12 @@ pub struct Initialize<'info> {
     pub authority: Signer<'info>,
     /// CHECK: destino das taxas; apenas armazenado.
     pub team_wallet: UncheckedAccount<'info>,
+    /// Conta executável do próprio programa; usada só pra provar, via `program_data`,
+    /// que `authority` é a upgrade authority.
+    #[account(constraint = program.programdata_address()? == Some(program_data.key()) @ BetError::Unauthorized)]
+    pub program: Program<'info, crate::program::OddiesBet>,
+    #[account(constraint = program_data.upgrade_authority_address == Some(authority.key()) @ BetError::Unauthorized)]
+    pub program_data: Account<'info, ProgramData>,
     pub system_program: Program<'info, System>,
 }
 
@@ -436,12 +473,21 @@ pub struct CreateMarket<'info> {
 
 #[derive(Accounts)]
 pub struct FundHouse<'info> {
+    #[account(seeds = [b"config"], bump = config.bump, has_one = authority)]
+    pub config: Account<'info, Config>,
     pub market: Account<'info, Market>,
     #[account(mut, seeds = [b"vault", market.key().as_ref()], bump = market.vault_bump)]
     pub vault: SystemAccount<'info>,
     #[account(mut)]
-    pub funder: Signer<'info>,
+    pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateConfig<'info> {
+    #[account(mut, seeds = [b"config"], bump = config.bump, has_one = authority)]
+    pub config: Account<'info, Config>,
+    pub authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -581,6 +627,8 @@ pub struct Market {
     /// Obrigações da casa por outcome (só HouseBacked).
     pub liabilities: [u64; MAX_OUTCOMES],
     pub close_ts: i64,
+    /// Piso pra resolve_market: precisa ser depois do fim real da partida, não só do kickoff.
+    pub resolve_after_ts: i64,
     pub winning_outcome: u8,
     /// Pote total a distribuir (snapshot na resolução, só Parimutuel).
     pub payout_pool: u64,
@@ -665,4 +713,8 @@ pub enum BetError {
     LosingBet,
     #[msg("Overflow aritmético")]
     MathOverflow,
+    #[msg("resolve_after_ts precisa ser depois de close_ts")]
+    InvalidResolveWindow,
+    #[msg("Não autorizado")]
+    Unauthorized,
 }

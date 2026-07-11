@@ -1,6 +1,8 @@
 # oddies-bet — programa Solana (Anchor)
 
-Program ID (devnet): `4Ns6amhKn6D3DXBNDuFPngFM6UpV3N54JNQD5wXAt84E`
+Program ID (devnet): `F4xhKysY8SrNwfqLZxyuJrZCWW8KPVbTjZWb4HHtD4ZA` — **já deployado e
+inicializado em devnet** (taxa 10%, authority/team_wallet = `keys/devnet-deploy-wallet.json`,
+veja `keys/README.md`).
 
 ## O que é
 
@@ -52,18 +54,26 @@ ela não conseguiria pagar).
 
 ## Instruções
 
-1. `initialize(fee_bps)` — cria a config global (uma vez).
-2. `create_market(market_id, fixture_id, kind, outcome_count, odds_bps, close_ts)` —
-   abre o mercado; `close_ts` = início da partida.
+1. `initialize(fee_bps)` — cria a config global (uma vez). Só quem for a **upgrade
+   authority do programa** consegue chamar (evita alguém inicializar primeiro e virar
+   authority permanente — precisa passar as contas `program` e `program_data`).
+2. `create_market(market_id, fixture_id, kind, outcome_count, odds_bps, close_ts, resolve_after_ts)` —
+   abre o mercado; `close_ts` = início da partida (fecha apostas), `resolve_after_ts` é o
+   piso extra pra `resolve_market` — precisa ser depois do fim real esperado da partida,
+   não só do kickoff.
 3. `fund_house(amount)` — deposita liquidez da casa (obrigatório antes de apostas
    `HouseBacked`; o programa rejeita apostas que o vault não consiga pagar no pior caso).
+   Só a authority pode chamar.
 4. `place_bet(outcome, amount)` — split taxa/líquido, registra a Bet, minta o ticket.
 5. `resolve_market(winning_outcome)` — só a autoridade (oráculo v1 = backend lendo a
-   TxLINE), só após `close_ts`. Parimutuel sem vencedores vira `Voided`.
+   TxLINE), só após `resolve_after_ts`. Parimutuel sem vencedores vira `Voided`.
 6. `cancel_market()` — partida cancelada → todos recuperam o stake líquido.
 7. `claim()` — holder do ticket queima o token e recebe o payout do vault.
 8. `withdraw_house(amount)` — autoridade saca do vault apenas o que **não** está
    comprometido com apostadores (`outstanding` trava o saque).
+9. `update_config(new_authority?, new_team_wallet?, new_fee_bps?)` — a authority atual
+   rotaciona authority/team_wallet/fee sem redeploy. Caminho natural pra migrar a
+   authority pra uma multisig (Squads) antes de mainnet.
 
 ## Build, testes e deploy
 
@@ -71,8 +81,28 @@ ela não conseguiria pagar).
 cd program
 cargo build-sbf                                  # gera target/deploy/oddies_bet.so
 RUSTUP_TOOLCHAIN=stable anchor idl build -o target/idl/oddies_bet.json
-RUSTUP_TOOLCHAIN=stable anchor test --skip-build # sobe validador local e roda tests/
+cp keys/devnet-program-keypair.json target/deploy/oddies_bet-keypair.json  # ver keys/README.md
+RUSTUP_TOOLCHAIN=stable anchor test --skip-build --skip-local-validator --skip-deploy
 ```
+
+> **Por que `--skip-local-validator --skip-deploy`**: o `anchor test` padrão sobe o
+> validador local e carrega o programa no genesis com upgrade authority **imutável**
+> ("none"), o que quebraria o teste de `initialize()` travado na upgrade authority. O
+> `[scripts].test` do `Anchor.toml` chama `scripts/test-local.sh`, que sobe o validador
+> e faz o deploy manualmente com `keys/devnet-deploy-wallet.json` como upgrade
+> authority de verdade — daí as duas flags pra impedir o Anchor de tentar de novo do
+> jeito padrão.
+
+Node 22.6+/23+/24 quebram o `ts-mocha` ao importar `@coral-xyz/anchor` (o "type
+stripping" nativo do Node ignora o `tsconfig` e trata o arquivo como ESM puro). O
+`test-local.sh` já seta `NODE_OPTIONS=--no-experimental-strip-types`; se for rodar
+`ts-mocha` direto, adicione essa flag manualmente.
+
+Os testes incluem um cenário de fuzzing (`tests/z-fuzz.ts`, com `fast-check`): valores
+de aposta/odds/outcome aleatórios e sequências de apostas de vários bettors, checando a
+cada passo que a liquidez da casa nunca fica descoberta e que o parimutuel nunca paga
+mais do que o pote arrecadado (sem vazamento do vault) — além de casos de fronteira
+(outcome fora do alcance, amount zero, odds no limite, etc.).
 
 > **Não rode `cargo update` sem cuidado**: o `Cargo.lock` tem pins (blake3, zeroize,
 > proc-macro-crate, indexmap, unicode-segmentation) porque o cargo 1.79 dos
@@ -84,8 +114,15 @@ RUSTUP_TOOLCHAIN=stable anchor test --skip-build # sobe validador local e roda t
 
 ```bash
 solana program deploy target/deploy/oddies_bet.so \
-  --program-id target/deploy/oddies_bet-keypair.json --url devnet
+  --program-id target/deploy/oddies_bet-keypair.json \
+  --keypair keys/devnet-deploy-wallet.json --url devnet
+# primeira vez: inicializar a config (autoridade + wallet do time + taxa)
+NODE_OPTIONS=--no-experimental-strip-types npx ts-node \
+  --compiler-options '{"module":"commonjs"}' scripts/initialize-devnet.ts
 ```
+
+Isso já foi feito uma vez (veja o Program ID no topo). Rodar `initialize-devnet.ts` de
+novo é seguro — ele detecta que a config já existe e só imprime o estado atual.
 
 ### Deploy mainnet
 
@@ -114,7 +151,8 @@ O IDL já está copiado em `server/idl/oddies_bet.json` para o backend consumir 
 O `server/src/gameService.ts` já sabe quando uma partida termina (`finished: true` via
 TxLINE). O fluxo de integração:
 
-1. Cron do backend cria mercados para os fixtures da Copa (`create_market`).
+1. Cron do backend cria mercados para os fixtures da Copa (`create_market`, passando
+   `resolve_after_ts` com uma folga segura depois do fim esperado da partida).
 2. Frontend chama `place_bet` direto da wallet do usuário.
 3. Quando `finished` chega, o backend (com a keypair de `wallet.ts` como autoridade)
    chama `resolve_market` com o outcome.
@@ -124,7 +162,14 @@ TxLINE). O fluxo de integração:
 
 - **Oráculo centralizado**: `resolve_market` confia na autoridade. Evolução natural:
   ler a conta do txoracle on-chain (IDL já em `server/idl/`) em vez de confiar no backend.
+  A authority hoje é uma keypair única (`keys/devnet-deploy-wallet.json`); antes de
+  mainnet, migrar pra uma multisig (Squads) via `update_config` — o programa já é
+  agnóstico a isso.
 - **Ticket sem metadata**: o NFT é um SPL mint puro (sem nome/imagem Metaplex). Dá para
   anexar metadata via Metaplex depois, pelo backend, sem mudar o programa.
 - Divisão parimutuel trunca lamports (sobras ficam no vault e podem ser varridas com
   `withdraw_house` após todos os claims).
+- `resolve_after_ts` é só um piso mínimo configurável pelo backend na criação do
+  mercado — o contrato não sabe de verdade quando a partida acabou, só impede resolver
+  antes desse piso. A garantia real ainda depende do cron do backend chamar
+  `resolve_market` com o outcome certo.

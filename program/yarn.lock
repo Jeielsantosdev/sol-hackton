@@ -458,6 +458,13 @@ eyes@^0.1.8:
   resolved "https://registry.yarnpkg.com/eyes/-/eyes-0.1.8.tgz#62cf120234c683785d902348a800ef3e0cc20bc0"
   integrity sha512-GipyPsXO1anza0AOZdy69Im7hGFCNB7Y/NGjDlZGJ3GJJLtwNSb2vrzYrTYJRrRloVx7pl+bhUaTB8yiccPvFQ==
 
+fast-check@^4.9.0:
+  version "4.9.0"
+  resolved "https://registry.yarnpkg.com/fast-check/-/fast-check-4.9.0.tgz#6337eb9861442b2534bb56a1406afd33dc018e78"
+  integrity sha512-7ms6T7SybUev/PQITciI0yLM2pOSFy5zpG8Ty7tQofcVaQUvrMXp6CBwqF6fThLCLOrfBtuHAtwq6Yu4XPCllg==
+  dependencies:
+    pure-rand "^8.0.0"
+
 fast-stable-stringify@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/fast-stable-stringify/-/fast-stable-stringify-1.0.0.tgz#5c5543462b22aeeefd36d05b34e51c78cb86d313"
@@ -771,6 +778,11 @@ picomatch@^2.0.4, picomatch@^2.2.1:
   version "2.3.2"
   resolved "https://registry.yarnpkg.com/picomatch/-/picomatch-2.3.2.tgz#5a942915e26b372dc0f0e6753149a16e6b1c5601"
   integrity sha512-V7+vQEJ06Z+c5tSye8S+nHUfI51xoXIXjHQ99cQtKUkQqqO1kO/KCJUfZXuB47h/YBlDhah2H3hdUGXn8ie0oA==
+
+pure-rand@^8.0.0:
+  version "8.4.2"
+  resolved "https://registry.yarnpkg.com/pure-rand/-/pure-rand-8.4.2.tgz#c83a7284ba06fe80e22d04077c48cd93dbecd883"
+  integrity sha512-vvuOGgcuPJAirlHvuQw1TrOiw7ptaIXXmIbNuiNOY6lNGJJH49PQ1Kj4nd783nPdQhQdicgOjVI2yI/9BD6/Ng==
 
 randombytes@^2.1.0:
   version "2.1.0"

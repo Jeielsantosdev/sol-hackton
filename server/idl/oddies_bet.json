@@ -1,5 +1,5 @@
 {
-  "address": "4Ns6amhKn6D3DXBNDuFPngFM6UpV3N54JNQD5wXAt84E",
+  "address": "F4xhKysY8SrNwfqLZxyuJrZCWW8KPVbTjZWb4HHtD4ZA",
   "metadata": {
     "name": "oddies_bet",
     "version": "0.1.0",
@@ -159,13 +159,19 @@
         {
           "name": "close_ts",
           "type": "i64"
+        },
+        {
+          "name": "resolve_after_ts",
+          "type": "i64"
         }
       ]
     },
     {
       "name": "fund_house",
       "docs": [
-        "Deposita liquidez da casa no vault (necessário antes de aceitar apostas HouseBacked)."
+        "Deposita liquidez da casa no vault (necessário antes de aceitar apostas HouseBacked).",
+        "Só a authority: dinheiro mandado por qualquer outra wallet ficaria preso no vault,",
+        "só sacável pela authority via withdraw_house."
       ],
       "discriminator": [
         175,
@@ -179,6 +185,9 @@
       ],
       "accounts": [
         {
+          "name": "config"
+        },
+        {
           "name": "market"
         },
         {
@@ -186,7 +195,7 @@
           "writable": true
         },
         {
-          "name": "funder",
+          "name": "authority",
           "writable": true,
           "signer": true
         },
@@ -204,7 +213,9 @@
     {
       "name": "initialize",
       "docs": [
-        "Cria a config global: quem administra, para onde vai a taxa e qual a taxa (ex.: 1000 = 10%)."
+        "Cria a config global: quem administra, para onde vai a taxa e qual a taxa (ex.: 1000 = 10%).",
+        "Só a upgrade authority do programa pode chamar (evita que alguém inicialize primeiro",
+        "e vire authority permanente)."
       ],
       "discriminator": [
         175,
@@ -228,6 +239,16 @@
         },
         {
           "name": "team_wallet"
+        },
+        {
+          "name": "program",
+          "docs": [
+            "Conta executável do próprio programa; usada só pra provar, via `program_data`,",
+            "que `authority` é a upgrade authority."
+          ]
+        },
+        {
+          "name": "program_data"
         },
         {
           "name": "system_program"
@@ -349,6 +370,53 @@
         {
           "name": "winning_outcome",
           "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "update_config",
+      "docs": [
+        "Atualiza a config (authority, team_wallet e/ou fee). Permite migrar a authority",
+        "pra uma multisig (ex.: Squads) sem precisar redeployar o programa."
+      ],
+      "discriminator": [
+        29,
+        158,
+        252,
+        191,
+        10,
+        83,
+        219,
+        99
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": {
+            "option": "pubkey"
+          }
+        },
+        {
+          "name": "new_team_wallet",
+          "type": {
+            "option": "pubkey"
+          }
+        },
+        {
+          "name": "new_fee_bps",
+          "type": {
+            "option": "u16"
+          }
         }
       ]
     },
@@ -556,6 +624,16 @@
       "code": 6014,
       "name": "MathOverflow",
       "msg": "Overflow aritmético"
+    },
+    {
+      "code": 6015,
+      "name": "InvalidResolveWindow",
+      "msg": "resolve_after_ts precisa ser depois de close_ts"
+    },
+    {
+      "code": 6016,
+      "name": "Unauthorized",
+      "msg": "Não autorizado"
     }
   ],
   "types": [
@@ -752,6 +830,13 @@
           },
           {
             "name": "close_ts",
+            "type": "i64"
+          },
+          {
+            "name": "resolve_after_ts",
+            "docs": [
+              "Piso pra resolve_market: precisa ser depois do fim real da partida, não só do kickoff."
+            ],
             "type": "i64"
           },
           {

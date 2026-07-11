@@ -19,6 +19,9 @@ const idl = JSON.parse(
 const TOKEN_PROGRAM_ID = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 );
+const BPF_LOADER_UPGRADEABLE_ID = new PublicKey(
+  "BPFLoaderUpgradeab1e11111111111111111111111"
+);
 
 const SOL = LAMPORTS_PER_SOL;
 const FEE_BPS = 1000; // 10%
@@ -32,10 +35,15 @@ describe("oddies-bet", () => {
   const teamWallet = Keypair.generate();
   const bettor1 = Keypair.generate();
   const bettor2 = Keypair.generate();
+  const impostor = Keypair.generate();
 
   const [configPda] = PublicKey.findProgramAddressSync(
     [Buffer.from("config")],
     program.programId
+  );
+  const [programDataPda] = PublicKey.findProgramAddressSync(
+    [program.programId.toBuffer()],
+    BPF_LOADER_UPGRADEABLE_ID
   );
 
   const marketPda = (marketId: BN) =>
@@ -115,8 +123,11 @@ describe("oddies-bet", () => {
     kind: object,
     outcomeCount: number,
     oddsBps: BN[],
-    closeTs: number
+    closeTs: number,
+    resolveAfterTs: number,
+    signer: Keypair | anchor.Wallet = authority
   ) {
+    const isWallet = "publicKey" in signer && !(signer instanceof Keypair);
     await program.methods
       .createMarket(
         marketId,
@@ -124,15 +135,17 @@ describe("oddies-bet", () => {
         kind,
         outcomeCount,
         oddsBps,
-        new BN(closeTs)
+        new BN(closeTs),
+        new BN(resolveAfterTs)
       )
       .accounts({
         config: configPda,
         market: marketPda(marketId),
         vault: vaultPda(marketPda(marketId)),
-        authority: authority.publicKey,
+        authority: signer.publicKey,
         systemProgram: SystemProgram.programId,
       })
+      .signers(isWallet ? [] : [signer as Keypair])
       .rpc();
   }
 
@@ -141,12 +154,32 @@ describe("oddies-bet", () => {
   }
 
   before(async () => {
-    for (const kp of [bettor1, bettor2]) {
+    for (const kp of [bettor1, bettor2, impostor]) {
       const sig = await provider.connection.requestAirdrop(
         kp.publicKey,
         10 * SOL
       );
       await provider.connection.confirmTransaction(sig);
+    }
+  });
+
+  it("rejeita initialize de quem não é a upgrade authority do programa", async () => {
+    try {
+      await program.methods
+        .initialize(FEE_BPS)
+        .accounts({
+          config: configPda,
+          authority: impostor.publicKey,
+          teamWallet: teamWallet.publicKey,
+          program: program.programId,
+          programData: programDataPda,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([impostor])
+        .rpc();
+      assert.fail("deveria ter falhado");
+    } catch (e: any) {
+      assert.include(e.toString(), "Unauthorized");
     }
   });
 
@@ -157,6 +190,8 @@ describe("oddies-bet", () => {
         config: configPda,
         authority: authority.publicKey,
         teamWallet: teamWallet.publicKey,
+        program: program.programId,
+        programData: programDataPda,
         systemProgram: SystemProgram.programId,
       })
       .rpc();
@@ -165,15 +200,79 @@ describe("oddies-bet", () => {
     assert.ok(config.teamWallet.equals(teamWallet.publicKey));
   });
 
+  it("rejeita inicializar a config duas vezes", async () => {
+    try {
+      await program.methods
+        .initialize(FEE_BPS)
+        .accounts({
+          config: configPda,
+          authority: authority.publicKey,
+          teamWallet: teamWallet.publicKey,
+          program: program.programId,
+          programData: programDataPda,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+      assert.fail("deveria ter falhado");
+    } catch (e: any) {
+      assert.include(e.toString(), "Error");
+    }
+  });
+
   describe("parimutuel (multiplayer)", () => {
     const marketId = new BN(1);
     let ticket1: { ticketMint: Keypair; ticketAccount: Keypair };
     let ticket2: { ticketMint: Keypair; ticketAccount: Keypair };
     let closeTs: number;
+    let resolveAfterTs: number;
+
+    it("rejeita criar mercado com resolve_after_ts antes de close_ts", async () => {
+      const now = Math.floor(Date.now() / 1000);
+      try {
+        await createMarket(
+          new BN(999),
+          { parimutuel: {} },
+          3,
+          zeroOdds(),
+          now + 10,
+          now + 5 // antes do close_ts: inválido
+        );
+        assert.fail("deveria ter falhado");
+      } catch (e: any) {
+        assert.include(e.toString(), "InvalidResolveWindow");
+      }
+    });
+
+    it("rejeita criar mercado de quem não é a authority", async () => {
+      const now = Math.floor(Date.now() / 1000);
+      try {
+        await createMarket(
+          new BN(998),
+          { parimutuel: {} },
+          3,
+          zeroOdds(),
+          now + 10,
+          now + 20,
+          impostor
+        );
+        assert.fail("deveria ter falhado");
+      } catch (e: any) {
+        assert.include(e.toString(), "ConstraintHasOne");
+      }
+    });
 
     it("cria o mercado e aceita apostas com split 10/90", async () => {
-      closeTs = Math.floor(Date.now() / 1000) + 8;
-      await createMarket(marketId, { parimutuel: {} }, 3, zeroOdds(), closeTs);
+      const now = Math.floor(Date.now() / 1000);
+      closeTs = now + 6;
+      resolveAfterTs = closeTs + 3;
+      await createMarket(
+        marketId,
+        { parimutuel: {} },
+        3,
+        zeroOdds(),
+        closeTs,
+        resolveAfterTs
+      );
 
       const teamBefore = await balance(teamWallet.publicKey);
       ticket1 = await placeBet(marketId, bettor1, 0, 1 * SOL);
@@ -206,9 +305,26 @@ describe("oddies-bet", () => {
       }
     });
 
+    it("rejeita resolver de quem não é a authority", async () => {
+      try {
+        await program.methods
+          .resolveMarket(0)
+          .accounts({
+            config: configPda,
+            market: marketPda(marketId),
+            authority: impostor.publicKey,
+          })
+          .signers([impostor])
+          .rpc();
+        assert.fail("deveria ter falhado");
+      } catch (e: any) {
+        assert.include(e.toString(), "ConstraintHasOne");
+      }
+    });
+
     it("resolve e o vencedor leva o pote inteiro (90% de 2 SOL)", async () => {
-      // Espera o close_ts passar no clock on-chain.
-      await new Promise((r) => setTimeout(r, 9000));
+      // Espera o resolve_after_ts passar no clock on-chain.
+      await new Promise((r) => setTimeout(r, 11000));
       await program.methods
         .resolveMarket(0)
         .accounts({
@@ -257,25 +373,79 @@ describe("oddies-bet", () => {
         assert.include(e.toString(), "Error");
       }
     });
+
+    it("rejeita cancelar mercado de quem não é a authority", async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const id = new BN(4);
+      await createMarket(
+        id,
+        { parimutuel: {} },
+        2,
+        zeroOdds(),
+        now + 3600,
+        now + 3700
+      );
+      try {
+        await program.methods
+          .cancelMarket()
+          .accounts({
+            config: configPda,
+            market: marketPda(id),
+            authority: impostor.publicKey,
+          })
+          .signers([impostor])
+          .rpc();
+        assert.fail("deveria ter falhado");
+      } catch (e: any) {
+        assert.include(e.toString(), "ConstraintHasOne");
+      }
+    });
   });
 
   describe("house-backed (singleplayer)", () => {
     const marketId = new BN(2);
     let ticket: { ticketMint: Keypair; ticketAccount: Keypair };
 
-    it("cria mercado com odds 2x, funda a casa e aceita aposta", async () => {
-      const closeTs = Math.floor(Date.now() / 1000) + 8;
+    it("cria mercado com odds 2x, rejeita fund_house de impostor e funda a casa", async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const closeTs = now + 6;
+      const resolveAfterTs = closeTs + 3;
       const odds = zeroOdds();
       odds[0] = new BN(20000); // 2.0x
       odds[1] = new BN(15000); // 1.5x
-      await createMarket(marketId, { houseBacked: {} }, 2, odds, closeTs);
+      await createMarket(
+        marketId,
+        { houseBacked: {} },
+        2,
+        odds,
+        closeTs,
+        resolveAfterTs
+      );
+
+      try {
+        await program.methods
+          .fundHouse(new BN(1 * SOL))
+          .accounts({
+            config: configPda,
+            market: marketPda(marketId),
+            vault: vaultPda(marketPda(marketId)),
+            authority: impostor.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .signers([impostor])
+          .rpc();
+        assert.fail("deveria ter falhado");
+      } catch (e: any) {
+        assert.include(e.toString(), "ConstraintHasOne");
+      }
 
       await program.methods
         .fundHouse(new BN(5 * SOL))
         .accounts({
+          config: configPda,
           market: marketPda(marketId),
           vault: vaultPda(marketPda(marketId)),
-          funder: authority.publicKey,
+          authority: authority.publicKey,
           systemProgram: SystemProgram.programId,
         })
         .rpc();
@@ -299,7 +469,7 @@ describe("oddies-bet", () => {
     });
 
     it("resolve e paga o payout fixo; casa saca o lucro livre", async () => {
-      await new Promise((r) => setTimeout(r, 9000));
+      await new Promise((r) => setTimeout(r, 11000));
       await program.methods
         .resolveMarket(0)
         .accounts({
@@ -338,6 +508,24 @@ describe("oddies-bet", () => {
         assert.include(e.toString(), "InsufficientHouseLiquidity");
       }
 
+      try {
+        await program.methods
+          .withdrawHouse(new BN(1))
+          .accounts({
+            config: configPda,
+            market: marketPda(marketId),
+            vault: vaultPda(marketPda(marketId)),
+            teamWallet: teamWallet.publicKey,
+            authority: impostor.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .signers([impostor])
+          .rpc();
+        assert.fail("deveria ter falhado");
+      } catch (e: any) {
+        assert.include(e.toString(), "ConstraintHasOne");
+      }
+
       const teamBefore = await balance(teamWallet.publicKey);
       await program.methods
         .withdrawHouse(new BN(freeLamports))
@@ -359,8 +547,15 @@ describe("oddies-bet", () => {
     const marketId = new BN(3);
 
     it("cancela e devolve o stake líquido ao apostador", async () => {
-      const closeTs = Math.floor(Date.now() / 1000) + 3600;
-      await createMarket(marketId, { parimutuel: {} }, 3, zeroOdds(), closeTs);
+      const now = Math.floor(Date.now() / 1000);
+      await createMarket(
+        marketId,
+        { parimutuel: {} },
+        3,
+        zeroOdds(),
+        now + 3600,
+        now + 3700
+      );
       const ticket = await placeBet(marketId, bettor2, 2, 1 * SOL);
 
       await program.methods
@@ -382,6 +577,70 @@ describe("oddies-bet", () => {
       const after = await balance(bettor2.publicKey);
       // Recupera os 90% líquidos (a taxa de 10% não volta).
       assert.approximately(after - before, 0.9 * SOL, 0.01 * SOL);
+    });
+  });
+
+  describe("update_config", () => {
+    it("rejeita update_config de quem não é a authority", async () => {
+      try {
+        await program.methods
+          .updateConfig(null, null, 500)
+          .accounts({
+            config: configPda,
+            authority: impostor.publicKey,
+          })
+          .signers([impostor])
+          .rpc();
+        assert.fail("deveria ter falhado");
+      } catch (e: any) {
+        assert.include(e.toString(), "ConstraintHasOne");
+      }
+    });
+
+    it("authority consegue trocar a fee e migrar a authority pra outra chave", async () => {
+      const newAuthority = Keypair.generate();
+      await provider.connection.confirmTransaction(
+        await provider.connection.requestAirdrop(newAuthority.publicKey, 2 * SOL)
+      );
+
+      await program.methods
+        .updateConfig(newAuthority.publicKey, null, 500)
+        .accounts({
+          config: configPda,
+          authority: authority.publicKey,
+        })
+        .rpc();
+
+      let config = await (program.account as any).config.fetch(configPda);
+      assert.equal(config.feeBps, 500);
+      assert.ok(config.authority.equals(newAuthority.publicKey));
+
+      // a chave antiga não manda mais; a nova sim (migra de volta pro estado original).
+      try {
+        await program.methods
+          .updateConfig(authority.publicKey, null, FEE_BPS)
+          .accounts({
+            config: configPda,
+            authority: authority.publicKey,
+          })
+          .rpc();
+        assert.fail("deveria ter falhado");
+      } catch (e: any) {
+        assert.include(e.toString(), "ConstraintHasOne");
+      }
+
+      await program.methods
+        .updateConfig(authority.publicKey, null, FEE_BPS)
+        .accounts({
+          config: configPda,
+          authority: newAuthority.publicKey,
+        })
+        .signers([newAuthority])
+        .rpc();
+
+      config = await (program.account as any).config.fetch(configPda);
+      assert.equal(config.feeBps, FEE_BPS);
+      assert.ok(config.authority.equals(authority.publicKey));
     });
   });
 });
