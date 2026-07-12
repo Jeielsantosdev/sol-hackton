@@ -175,6 +175,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         wallets={wallets}
         autoConnect
         onError={(e: any) => {
+          // WalletNotReadyError acontece no autoConnect quando a wallet
+          // escolhida numa visita anterior não existe neste navegador —
+          // o fluxo de clique já orienta o usuário; aqui é só ruído.
+          if (e?.name === "WalletNotReadyError") return;
           console.warn("[wallet-adapter]", e?.name, e?.message, e?.error?.message ?? "");
           setError(connectErrorMessage(e));
         }}

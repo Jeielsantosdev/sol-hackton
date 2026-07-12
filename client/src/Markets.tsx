@@ -43,14 +43,19 @@ export default function Markets() {
   const refresh = useCallback(async () => {
     try {
       const res = await fetch("/api/markets");
+      // proxy do vite responde 500/texto quando o server da API está fora
+      if (!res.ok || !res.headers.get("content-type")?.includes("json")) {
+        throw new Error(t.markets.serverOffline);
+      }
       const json = await res.json();
       setMarkets(json.markets ?? []);
+      setError("");
     } catch (e) {
       setError(String((e as Error).message));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   // pools atualizam a cada 15s; countdown a cada 1s
   useEffect(() => {

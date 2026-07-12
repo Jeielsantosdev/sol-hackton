@@ -571,6 +571,8 @@ const pt = {
     refresh: "↻ Atualizar",
     yourPick: "seu palpite",
     error: "Falha na aposta",
+    serverOffline:
+      "Servidor da API fora do ar — rode `npm run dev` na pasta server/ e recarregue.",
   },
 
   walletPage: {
@@ -1168,6 +1170,8 @@ const en: Dict = {
     refresh: "↻ Refresh",
     yourPick: "your pick",
     error: "Bet failed",
+    serverOffline:
+      "API server is down — run `npm run dev` inside server/ and reload.",
   },
 
   walletPage: {
