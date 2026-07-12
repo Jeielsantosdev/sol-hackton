@@ -55,6 +55,37 @@ const Ctx = createContext<WalletCtx | null>(null);
 
 const RPC_URL = "https://api.devnet.solana.com";
 
+/** Provider Solana injetado direto na página (fora do Wallet Standard):
+ *  MetaMask com suporte a Solana, forks e wallets antigas. É o fallback
+ *  quando o modal não reconhece a wallet do usuário. */
+interface RawInjected extends InjectedProvider {
+  connect(opts?: { onlyIfTrusted?: boolean }): Promise<{ publicKey: PublicKey }>;
+  disconnect?(): Promise<void>;
+  isPhantom?: boolean;
+  isMetaMask?: boolean;
+  on?(event: string, cb: (...args: any[]) => void): void;
+}
+
+function detectInjected(): { name: string; provider: RawInjected } | null {
+  const w = window as any;
+  const candidates: Array<[string, RawInjected | undefined]> = [
+    ["Phantom", w.phantom?.solana],
+    ["Solflare", w.solflare?.isSolflare ? w.solflare : undefined],
+    ["Backpack", w.backpack?.isBackpack ? w.backpack : undefined],
+    ["", w.solana],
+  ];
+  for (const [label, p] of candidates) {
+    if (!p || typeof p.connect !== "function") continue;
+    const name =
+      label ||
+      (p.isMetaMask ? "MetaMask" : p.isPhantom ? "Phantom" : "Wallet Solana");
+    return { name, provider: p };
+  }
+  return null;
+}
+
+const FALLBACK_AUTOCONNECT_KEY = "chainplay-injected-autoconnect";
+
 function Bridge({
   error,
   setError,
@@ -67,6 +98,56 @@ function Bridge({
   const adapter = useAdapterWallet();
   const { setVisible } = useWalletModal();
   const wantConnect = useRef(false);
+
+  // conexão direta com provider injetado (MetaMask etc.), fora do modal
+  const [fallback, setFallback] = useState<{
+    name: string;
+    provider: RawInjected;
+    publicKey: PublicKey;
+  } | null>(null);
+  const [fallbackConnecting, setFallbackConnecting] = useState(false);
+
+  async function connectInjected(silent = false) {
+    const detected = detectInjected();
+    if (!detected) return false;
+    setFallbackConnecting(true);
+    try {
+      const { publicKey } = await detected.provider.connect(
+        silent ? { onlyIfTrusted: true } : undefined
+      );
+      setFallback({ ...detected, publicKey });
+      detected.provider.on?.("disconnect", () => setFallback(null));
+      detected.provider.on?.("accountChanged", (pk: PublicKey | null) => {
+        setFallback((f) => (f && pk ? { ...f, publicKey: pk } : null));
+      });
+      localStorage.setItem(FALLBACK_AUTOCONNECT_KEY, "1");
+      return true;
+    } catch (e) {
+      if (!silent) setError(connectErrorMessage(e as Error));
+      return false;
+    } finally {
+      setFallbackConnecting(false);
+    }
+  }
+
+  // reconexão silenciosa do fallback (a extensão pode injetar tarde)
+  useEffect(() => {
+    if (localStorage.getItem(FALLBACK_AUTOCONNECT_KEY) !== "1") return;
+    let cancelled = false;
+    const attempt = (wait: number) => {
+      if (cancelled) return;
+      if (detectInjected()) {
+        connectInjected(true);
+        return;
+      }
+      if (wait < 3000) window.setTimeout(() => attempt(wait + 300), 300);
+    };
+    attempt(0);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // O modal do react-ui só faz o select() da wallet — quem conecta somos nós.
   useEffect(() => {
@@ -88,57 +169,74 @@ function Bridge({
     adapter.connect().catch((e) => setError(connectErrorMessage(e)));
   }, [adapter.wallet, adapter.connected, adapter.connecting, adapter, setError]);
 
-  // wallets "detectáveis": instaladas (Installed) ou carregáveis (Loadable)
-  const anyWallet = adapter.wallets.some(
-    (w) => w.readyState === "Installed" || w.readyState === "Loadable"
-  );
+  const anyInstalled = adapter.wallets.some((w) => w.readyState === "Installed");
+  const anyLoadable = adapter.wallets.some((w) => w.readyState === "Loadable");
 
   const provider: InjectedProvider | null = useMemo(() => {
-    if (!adapter.publicKey || !adapter.signTransaction) return null;
-    return {
-      publicKey: adapter.publicKey,
-      signTransaction: adapter.signTransaction,
-      signAllTransactions:
-        adapter.signAllTransactions ??
-        (async (txs) => {
-          const out = [] as typeof txs;
-          for (const tx of txs) out.push(await adapter.signTransaction!(tx));
-          return out;
-        }),
-    };
-  }, [adapter.publicKey, adapter.signTransaction, adapter.signAllTransactions]);
+    if (adapter.publicKey && adapter.signTransaction) {
+      return {
+        publicKey: adapter.publicKey,
+        signTransaction: adapter.signTransaction,
+        signAllTransactions:
+          adapter.signAllTransactions ??
+          (async (txs) => {
+            const out = [] as typeof txs;
+            for (const tx of txs) out.push(await adapter.signTransaction!(tx));
+            return out;
+          }),
+      };
+    }
+    return fallback?.provider ?? null;
+  }, [adapter.publicKey, adapter.signTransaction, adapter.signAllTransactions, fallback]);
 
   async function connect() {
     setError(null);
-    if (!anyWallet) {
-      setError(
-        "Nenhuma wallet Solana encontrada — instale Phantom, Backpack ou Solflare e recarregue a página."
-      );
+    // 1) wallets reconhecidas pelo Wallet Standard → modal oficial
+    if (anyInstalled) {
+      wantConnect.current = true;
+      if (adapter.wallet && !adapter.connected) {
+        wantConnect.current = false;
+        await adapter.connect().catch((e) => setError(connectErrorMessage(e)));
+        return;
+      }
+      setVisible(true);
       return;
     }
-    wantConnect.current = true;
-    // wallet já selecionada antes (ex.: reconexão): conecta direto
-    if (adapter.wallet && !adapter.connected) {
-      wantConnect.current = false;
-      await adapter.connect().catch((e) => setError(connectErrorMessage(e)));
+    // 2) provider injetado fora do padrão (MetaMask com Solana etc.)
+    if (await connectInjected()) return;
+    // 3) só opções "carregáveis" (ex.: Solflare web) → ainda dá pro modal
+    if (anyLoadable) {
+      wantConnect.current = true;
+      setVisible(true);
       return;
     }
-    setVisible(true);
+    setError(
+      "Nenhuma wallet Solana encontrada — instale Phantom, Backpack ou Solflare e recarregue a página."
+    );
   }
 
   async function disconnect() {
     setError(null);
+    localStorage.removeItem(FALLBACK_AUTOCONNECT_KEY);
+    if (fallback) {
+      await fallback.provider.disconnect?.().catch(() => {});
+      setFallback(null);
+    }
     await adapter.disconnect().catch(() => {});
   }
+
+  const activePk = adapter.publicKey ?? fallback?.publicKey ?? null;
 
   return (
     <Ctx.Provider
       value={{
-        address: adapter.publicKey?.toBase58() ?? null,
-        publicKey: adapter.publicKey,
-        walletName: adapter.wallet?.adapter.name ?? null,
-        connecting: adapter.connecting,
-        unavailable: !anyWallet,
+        address: activePk?.toBase58() ?? null,
+        publicKey: activePk,
+        walletName: adapter.publicKey
+          ? adapter.wallet?.adapter.name ?? null
+          : fallback?.name ?? null,
+        connecting: adapter.connecting || fallbackConnecting,
+        unavailable: !anyInstalled && !anyLoadable && !detectInjected(),
         error,
         provider,
         connect,
