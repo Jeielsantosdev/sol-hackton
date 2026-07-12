@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
+import Arcade from "./Arcade";
 import Game from "./Game";
 import GamesHub from "./GamesHub";
+import GuessStats from "./GuessStats";
 import Landing from "./Landing";
 import Markets from "./Markets";
 import StakedHilo from "./StakedHilo";
+import Survivor from "./Survivor";
 import WalletPage from "./WalletPage";
 
 export default function App() {
@@ -22,6 +25,14 @@ export default function App() {
       return <GamesHub />;
     case "#/hilo-apostado":
       return <StakedHilo />;
+    case "#/hilo-infinito":
+      return <StakedHilo mode="infinite" />;
+    case "#/stats":
+      return <GuessStats />;
+    case "#/survivor":
+      return <Survivor />;
+    case "#/penalty":
+      return <Arcade game="penalty" />;
     case "#/mercados":
       return <Markets />;
     case "#/carteira":

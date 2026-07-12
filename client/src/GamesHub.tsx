@@ -15,11 +15,12 @@ interface GameEntry {
 // Ordem do grid = ordem de entrega do plano: o jogável vem primeiro.
 const GAMES: GameEntry[] = [
   { id: "hilo", icon: "🎯", href: "#/jogar", hrefStaked: "#/hilo-apostado", phase: 1 },
+  { id: "infiniteHilo", icon: "♾️", href: "#/hilo-infinito", phase: 1 },
   { id: "markets1x2", icon: "🏟️", href: "#/mercados", phase: 2 },
-  { id: "infiniteHilo", icon: "♾️", phase: 1 },
-  { id: "guessStats", icon: "📊", phase: 2 },
-  { id: "survivor", icon: "🛡️", phase: 3 },
-  { id: "penalty", icon: "🥅", phase: 4 },
+  { id: "guessStats", icon: "📊", href: "#/stats", phase: 2 },
+  { id: "survivor", icon: "🛡️", href: "#/survivor", phase: 3 },
+  { id: "penalty", icon: "🥅", href: "#/penalty", phase: 4 },
+  // em construção (Fase 5): motores prontos no server, UI por vir
   { id: "liveChallenge", icon: "⚡", phase: 5 },
   { id: "guessTeam", icon: "🕵️", phase: 5 },
 ];

@@ -2,7 +2,13 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { BN } from "@coral-xyz/anchor";
-import { LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web3.js";
+import {
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  sendAndConfirmTransaction,
+} from "@solana/web3.js";
 import { DATA_DIR } from "../config.js";
 import { getGameData, type GameMatch } from "../games/matches.js";
 import {
@@ -26,6 +32,27 @@ export const RUN_ODDS_BPS: Record<number, number> = {
   20: 250_000, // 25x
 };
 
+// Infinite Hi-Lo: escada de cash-out — streak → multiplicador em bps (payout
+// total, stake incluso). O mercado on-chain é criado com as odds do topo da
+// escada; sacar antes do topo anula o mercado (o ticket devolve o stake via
+// claim) e a casa paga o lucro da escada por transferência direta. A escada
+// 100% on-chain fica pra v2 do contrato (mercado-sessão com odds por tier).
+export const INFINITE_LADDER_BPS: Record<number, number> = {
+  1: 12_000, // 1.2x
+  2: 15_000,
+  3: 20_000,
+  4: 27_000,
+  5: 36_000,
+  6: 48_000,
+  7: 65_000,
+  8: 90_000,
+  9: 120_000,
+  10: 160_000,
+  11: 210_000,
+  12: 280_000, // 28x — topo: resolve on-chain com odds cheias
+};
+export const INFINITE_CAP_STREAK = 12;
+
 export const MIN_STAKE_LAMPORTS = 0.001 * LAMPORTS_PER_SOL;
 // Piso de segurança pro vault da casa em devnet: payout máximo por run.
 export const MAX_PAYOUT_LAMPORTS = 0.3 * LAMPORTS_PER_SOL;
@@ -33,6 +60,8 @@ export const MAX_PAYOUT_LAMPORTS = 0.3 * LAMPORTS_PER_SOL;
 const BET_WINDOW_S = 180; // jogador tem 3min pra assinar o place_bet
 const RUN_OUTCOME_WIN = 0;
 const RUN_OUTCOME_LOSE = 1;
+
+export type RunMode = "target" | "infinite";
 
 export type RunCategory = "goals" | "corners" | "yellowCards" | "possession";
 
@@ -50,6 +79,7 @@ export type RunStatus =
   | "won"
   | "lost"
   | "expired" // nunca apostou dentro da janela
+  | "cashed" // infinite: sacou no meio da escada (mercado anulado, stake via claim)
   | "settled"; // mercado resolvido on-chain (claim liberado se ganhou)
 
 export interface RunRecord {
@@ -57,6 +87,8 @@ export interface RunRecord {
   wallet: string;
   marketId: string;
   marketPdaB58: string;
+  /** ausente em runs antigas = "target" */
+  mode?: RunMode;
   target: number;
   oddsBps: number;
   stakeLamports: number;
@@ -67,6 +99,8 @@ export interface RunRecord {
   status: RunStatus;
   /** resultado congelado no fim do jogo, usado na liquidação on-chain */
   finalOutcome?: number;
+  /** infinite: total sacado na escada (stake devolvido via claim + lucro pago pela casa) */
+  cashedLamports?: number;
   streak: number;
   index: number;
   /** sequência secreta: nunca sai inteira pro client */
@@ -138,16 +172,28 @@ async function buildRounds(target: number): Promise<RunRound[]> {
   });
 }
 
+function ladderPayout(run: RunRecord, streak: number): number {
+  const bps = INFINITE_LADDER_BPS[Math.min(streak, INFINITE_CAP_STREAK)] ?? 0;
+  return Math.floor((run.netLamports * bps) / BPS);
+}
+
 /** Visão pública de uma run — nunca inclui valores ainda não revelados. */
 export function runView(run: RunRecord) {
   const current = run.rounds[run.index];
   const next = run.rounds[run.index + 1];
+  const mode: RunMode = run.mode ?? "target";
   return {
     id: run.id,
     wallet: run.wallet,
     marketId: run.marketId,
     marketPda: run.marketPdaB58,
+    mode,
     target: run.target,
+    // infinite: quanto sai sacando agora e quanto vale o próximo degrau
+    cashoutLamports:
+      mode === "infinite" && run.streak >= 1 ? ladderPayout(run, run.streak) : 0,
+    nextRungLamports: mode === "infinite" ? ladderPayout(run, run.streak + 1) : 0,
+    cashedLamports: run.cashedLamports ?? 0,
     oddsBps: run.oddsBps,
     stakeLamports: run.stakeLamports,
     payoutLamports: run.payoutLamports,
@@ -167,7 +213,12 @@ export function runView(run: RunRecord) {
 const MAX_RUNS_PER_WINDOW = 10;
 const RUN_WINDOW_MS = 5 * 60 * 1000;
 
-export async function createRun(wallet: string, target: number, stakeLamports: number) {
+export async function createRun(
+  wallet: string,
+  target: number,
+  stakeLamports: number,
+  mode: RunMode = "target"
+) {
   const chain = getChain();
   if (!chain) throw new Error("on-chain desativado no server (authority ausente)");
 
@@ -196,7 +247,11 @@ export async function createRun(wallet: string, target: number, stakeLamports: n
     throw new Error("limite de novas runs atingido — tente de novo em alguns minutos");
   }
 
-  const oddsBps = RUN_ODDS_BPS[target];
+  // infinite: a meta é o topo da escada e as odds on-chain são as do topo —
+  // sacar antes disso liquida via cancel_market + pagamento da casa
+  if (mode === "infinite") target = INFINITE_CAP_STREAK;
+  const oddsBps =
+    mode === "infinite" ? INFINITE_LADDER_BPS[INFINITE_CAP_STREAK] : RUN_ODDS_BPS[target];
   if (!oddsBps) {
     throw new Error(`meta inválida: escolha entre ${Object.keys(RUN_ODDS_BPS).join(", ")}`);
   }
@@ -263,6 +318,7 @@ export async function createRun(wallet: string, target: number, stakeLamports: n
     wallet,
     marketId: marketId.toString(),
     marketPdaB58: market.toBase58(),
+    mode,
     target,
     oddsBps,
     stakeLamports,
@@ -279,7 +335,7 @@ export async function createRun(wallet: string, target: number, stakeLamports: n
   loadStore().runs.push(run);
   saveStore();
   console.log(
-    `[runs] run criada: ${wallet.slice(0, 6)}… meta ${target} · stake ${stakeLamports} · market ${marketId}`
+    `[runs] run ${mode} criada: ${wallet.slice(0, 6)}… meta ${target} · stake ${stakeLamports} · market ${marketId}`
   );
   return runView(run);
 }
@@ -343,13 +399,89 @@ export async function guessRun(id: string, dir: "higher" | "lower") {
   };
 }
 
-/** Encerra a run por decisão do jogador (desistência conta como derrota). */
+/**
+ * Encerra a run por decisão do jogador.
+ * - target: desistência conta como derrota.
+ * - infinite com streak ≥ 1: saque na escada — o mercado é anulado on-chain
+ *   (o ticket devolve o stake líquido via claim) e a casa transfere o lucro
+ *   `net*(m-1)` direto pra wallet. Bater o topo não passa por aqui: vira
+ *   `won` no guess e liquida com as odds cheias do mercado.
+ */
 export async function cashoutRun(id: string) {
   const run = getRun(id);
   if (!run) throw new Error("run não encontrada");
   if (run.status !== "playing" && run.status !== "awaiting_bet") {
     throw new Error(`run encerrada (${run.status})`);
   }
+
+  const infinite = (run.mode ?? "target") === "infinite";
+  if (infinite && run.status === "playing" && run.streak >= 1) {
+    const chain = getChain();
+    if (!chain) throw new Error("on-chain desativado no server");
+    const total = ladderPayout(run, run.streak);
+    const profit = total - run.netLamports;
+    const market = marketPda(new BN(run.marketId));
+    const vault = vaultPda(market);
+
+    // 1) anula o mercado: o claim do ticket passa a devolver o stake líquido
+    await chain.program.methods
+      .cancelMarket()
+      .accounts({
+        config: configPda(),
+        market,
+        authority: chain.authority.publicKey,
+      })
+      .rpc();
+    run.status = "cashed";
+    run.cashedLamports = total;
+    saveStore();
+
+    // 2) best-effort daqui pra baixo: o stake do jogador já está garantido
+    try {
+      if (profit > 0) {
+        await sendAndConfirmTransaction(
+          chain.connection,
+          new Transaction().add(
+            SystemProgram.transfer({
+              fromPubkey: chain.authority.publicKey,
+              toPubkey: new PublicKey(run.wallet),
+              lamports: profit,
+            })
+          ),
+          [chain.authority]
+        );
+      }
+      // recicla a liquidez da casa que sobrou no vault (não comprometida)
+      const acc: any = await (chain.program.account as any).market.fetch(market);
+      const rentMin = await chain.connection.getMinimumBalanceForRentExemption(0);
+      const usable = (await chain.connection.getBalance(vault)) - rentMin;
+      const free = usable - (acc.outstanding as BN).toNumber();
+      if (free > 0) {
+        await chain.program.methods
+          .withdrawHouse(new BN(free))
+          .accounts({
+            config: configPda(),
+            market,
+            vault,
+            teamWallet: (
+              await (chain.program.account as any).config.fetch(configPda())
+            ).teamWallet,
+            authority: chain.authority.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+      }
+    } catch (err) {
+      console.warn(
+        `[runs] pós-cashout da run ${run.id.slice(0, 8)}: ${(err as Error).message}`
+      );
+    }
+    console.log(
+      `[runs] cashout infinite: ${run.wallet.slice(0, 6)}… streak ${run.streak} → ${total} lamports`
+    );
+    return runView(run);
+  }
+
   run.status = run.streak >= run.target ? "won" : "lost";
   run.finalOutcome = run.streak >= run.target ? RUN_OUTCOME_WIN : RUN_OUTCOME_LOSE;
   saveStore();

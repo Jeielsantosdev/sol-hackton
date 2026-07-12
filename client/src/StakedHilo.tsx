@@ -13,6 +13,8 @@ import { CATEGORY_ICONS, type StatCategory } from "./types";
    config → creating → betting (assina o place_bet) → playing → won|lost
    won: espera o cron liquidar on-chain (settled) e libera o claim. */
 
+export type RunMode = "target" | "infinite";
+
 interface RunCardInfo {
   home: string;
   away: string;
@@ -25,7 +27,11 @@ interface RunState {
   id: string;
   marketId: string;
   marketPda: string;
+  mode?: RunMode;
   target: number;
+  cashoutLamports?: number;
+  nextRungLamports?: number;
+  cashedLamports?: number;
   oddsBps: number;
   stakeLamports: number;
   payoutLamports: number;
@@ -45,9 +51,12 @@ type Phase =
   | "rolling"
   | "won"
   | "lost"
+  | "cashed"
   | "expired";
 
 const STAKE_PRESETS = [0.01, 0.02, 0.05];
+// o topo da escada paga 28x — presets menores respeitam o teto de payout da casa
+const INFINITE_STAKE_PRESETS = [0.002, 0.005, 0.01];
 const ROLL_DURATION = 1000;
 
 async function api(path: string, body?: unknown) {
@@ -61,14 +70,18 @@ async function api(path: string, body?: unknown) {
   return json;
 }
 
-export default function StakedHilo() {
+export default function StakedHilo({ mode = "target" }: { mode?: RunMode }) {
   const { t } = useLang();
   const account = useAccount();
   const accountCta = useAccountCta();
+  const infinite = mode === "infinite";
+  const presets = infinite ? INFINITE_STAKE_PRESETS : STAKE_PRESETS;
 
   const [oddsTable, setOddsTable] = useState<Record<string, number>>({});
+  const [ladder, setLadder] = useState<Record<string, number>>({});
+  const [ladderCap, setLadderCap] = useState(12);
   const [target, setTarget] = useState(5);
-  const [stakeSol, setStakeSol] = useState(STAKE_PRESETS[0]);
+  const [stakeSol, setStakeSol] = useState(presets[0]);
   const [phase, setPhase] = useState<Phase>("config");
   const [run, setRun] = useState<RunState | null>(null);
   const [ticket, setTicket] = useState<PlacedBet | null>(null);
@@ -89,8 +102,8 @@ export default function StakedHilo() {
   const revealTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
-    document.title = t.staked.docTitle;
-  }, [t]);
+    document.title = infinite ? t.infinite.docTitle : t.staked.docTitle;
+  }, [t, infinite]);
 
   useEffect(() => () => window.clearTimeout(revealTimer.current), []);
 
@@ -99,6 +112,8 @@ export default function StakedHilo() {
     api("/api/runs/config")
       .then((c) => {
         setOddsTable(c.odds ?? {});
+        setLadder(c.infiniteLadder ?? {});
+        if (c.infiniteCap) setLadderCap(c.infiniteCap);
         const targets = Object.keys(c.odds ?? {}).map(Number);
         if (targets.length && !targets.includes(target)) setTarget(targets[0]);
       })
@@ -118,8 +133,9 @@ export default function StakedHilo() {
         const nowS = Math.floor(Date.now() / 1000);
         const active = runs.find(
           (r) =>
-            r.status === "playing" ||
-            (r.status === "awaiting_bet" && r.closeTs > nowS)
+            (r.mode ?? "target") === mode &&
+            (r.status === "playing" ||
+              (r.status === "awaiting_bet" && r.closeTs > nowS))
         );
         if (!active) return;
         setRun(active);
@@ -158,7 +174,8 @@ export default function StakedHilo() {
     return () => window.clearInterval(id);
   }, [phase, run, settled]);
 
-  const oddsBps = oddsTable[String(target)] ?? 0;
+  const capBps = ladder[String(ladderCap)] ?? 0;
+  const oddsBps = infinite ? capBps : oddsTable[String(target)] ?? 0;
   const stakeLamports = Math.round(stakeSol * 1e9);
   const potential = Math.floor((stakeLamports * 0.9 * oddsBps) / 10_000);
   // saldo conhecido via /api/auth/me (custodial ou sessão wallet/SIWS);
@@ -175,6 +192,7 @@ export default function StakedHilo() {
         wallet: account.address,
         target,
         stakeLamports,
+        mode,
       });
       setRun(r);
       setPhase("betting");
@@ -247,9 +265,17 @@ export default function StakedHilo() {
   async function forfeit() {
     if (!run) return;
     try {
-      await api(`/api/runs/${run.id}/cashout`, {});
-      setPhase("lost");
-      playSfx("wrong");
+      const r = await api(`/api/runs/${run.id}/cashout`, {});
+      if (r.status === "cashed") {
+        // infinite: saque na escada — mercado anulado, prêmio garantido
+        setRun((old) => ({ ...(old as RunState), ...r }));
+        setPhase("cashed");
+        celebrateWin();
+        playSfx("win");
+      } else {
+        setPhase("lost");
+        playSfx("wrong");
+      }
     } catch (e) {
       setError(String((e as Error).message));
     }
@@ -304,8 +330,10 @@ export default function StakedHilo() {
 
       <div className="shell">
         <header className="game-hero">
-          <h1 className="game-question">{t.staked.title}</h1>
-          <p className="game-sub">{t.staked.sub}</p>
+          <h1 className="game-question">
+            {infinite ? t.infinite.title : t.staked.title}
+          </h1>
+          <p className="game-sub">{infinite ? t.infinite.sub : t.staked.sub}</p>
         </header>
 
         {error && <p className="dim center run-error">⚠️ {error}</p>}
@@ -313,25 +341,50 @@ export default function StakedHilo() {
         {/* ---------------- escolha de meta e stake ---------------- */}
         {(phase === "config" || phase === "creating") && (
           <div className="staked-config">
-            <h2 className="staked-label">{t.staked.chooseTarget}</h2>
-            <div className="target-grid">
-              {targets.map((n) => (
-                <button
-                  key={n}
-                  className={`card target-card ${target === n ? "selected" : ""}`}
-                  onClick={() => setTarget(n)}
-                >
-                  <span className="target-n mono">{n}</span>
-                  <span className="target-odds">
-                    {t.staked.oddsX((oddsTable[String(n)] / 10_000).toLocaleString())}
-                  </span>
-                </button>
-              ))}
-            </div>
+            {infinite ? (
+              <>
+                <h2 className="staked-label">{t.infinite.ladderLabel}</h2>
+                <div className="ladder-strip">
+                  {Object.entries(ladder)
+                    .sort((a, b) => Number(a[0]) - Number(b[0]))
+                    .map(([n, bps]) => (
+                      <span key={n} className="ladder-rung mono">
+                        {t.infinite.rung(Number(n), (bps / 10_000).toLocaleString())}
+                      </span>
+                    ))}
+                </div>
+                <p className="dim center">
+                  {t.infinite.capNote(
+                    ladderCap,
+                    (capBps / 10_000).toLocaleString()
+                  )}
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="staked-label">{t.staked.chooseTarget}</h2>
+                <div className="target-grid">
+                  {targets.map((n) => (
+                    <button
+                      key={n}
+                      className={`card target-card ${target === n ? "selected" : ""}`}
+                      onClick={() => setTarget(n)}
+                    >
+                      <span className="target-n mono">{n}</span>
+                      <span className="target-odds">
+                        {t.staked.oddsX(
+                          (oddsTable[String(n)] / 10_000).toLocaleString()
+                        )}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
 
             <h2 className="staked-label">{t.staked.stakeLabel}</h2>
             <div className="stake-row">
-              {STAKE_PRESETS.map((s) => (
+              {presets.map((s) => (
                 <button
                   key={s}
                   className={`stake-chip mono ${stakeSol === s ? "selected" : ""}`}
@@ -367,7 +420,11 @@ export default function StakedHilo() {
                   disabled={phase === "creating" || !oddsBps || insufficient}
                   onClick={createRun}
                 >
-                  {phase === "creating" ? t.staked.creating : t.staked.start}
+                  {phase === "creating"
+                    ? t.staked.creating
+                    : infinite
+                    ? t.infinite.start
+                    : t.staked.start}
                 </button>
               </>
             )}
@@ -469,29 +526,58 @@ export default function StakedHilo() {
               <div>
                 <span className="label">{t.game.streak}</span>
                 <strong className="stat-pop" key={`s${run.streak}`}>
-                  🔥 {run.streak}/{run.target}
+                  🔥 {run.streak}
+                  {infinite ? "" : `/${run.target}`}
                 </strong>
               </div>
-              <div>
-                <span className="label">{t.staked.stakeLabel}</span>
-                <strong className="mono">{formatSol(run.stakeLamports)}</strong>
-              </div>
+              {infinite ? (
+                <div>
+                  <span className="label">{t.infinite.multiplier}</span>
+                  <strong className="mono">
+                    {((ladder[String(Math.max(1, Math.min(run.streak, ladderCap)))] ??
+                      10_000) /
+                      10_000
+                    ).toLocaleString()}
+                    ×
+                  </strong>
+                </div>
+              ) : (
+                <div>
+                  <span className="label">{t.staked.stakeLabel}</span>
+                  <strong className="mono">{formatSol(run.stakeLamports)}</strong>
+                </div>
+              )}
               <div>
                 <span className="label">{t.staked.potential}</span>
                 <strong className="mono">{formatSol(run.payoutLamports)}</strong>
               </div>
             </div>
 
-            <button className="ghost-btn" onClick={forfeit}>
-              {t.staked.cashout}
-            </button>
+            {infinite && run.streak >= 1 ? (
+              <>
+                {/* a decisão de ouro: seguir subindo ou garantir o prêmio */}
+                <button className="primary cashout-cta" onClick={forfeit}>
+                  {t.infinite.cashoutBtn(formatSol(run.cashoutLamports ?? 0))}
+                </button>
+                <p className="dim center">
+                  {t.infinite.cashoutHint}
+                  {run.nextRungLamports
+                    ? ` · ${t.infinite.nextRung(formatSol(run.nextRungLamports))}`
+                    : ""}
+                </p>
+              </>
+            ) : (
+              <button className="ghost-btn" onClick={forfeit}>
+                {infinite ? t.infinite.forfeitZero : t.staked.cashout}
+              </button>
+            )}
           </>
         )}
 
         {/* ---------------- vitória ---------------- */}
         {phase === "won" && run && (
           <div className="endgame">
-            <h2>{t.staked.wonTitle}</h2>
+            <h2>{infinite ? t.infinite.wonTitle : t.staked.wonTitle}</h2>
             <p>{settled ? "" : t.staked.wonSub(formatSol(run.payoutLamports))}</p>
             {claimed ? (
               <>
@@ -509,6 +595,41 @@ export default function StakedHilo() {
               </button>
             ) : (
               <p className="dim">⏳ {t.staked.settling}</p>
+            )}
+          </div>
+        )}
+
+        {/* ---------------- cash-out da escada (infinite) ---------------- */}
+        {phase === "cashed" && run && (
+          <div className="endgame">
+            <h2>{t.infinite.cashedTitle}</h2>
+            <p>{t.infinite.cashedSub(formatSol(run.cashedLamports ?? 0))}</p>
+            {claimed ? (
+              <>
+                <p className="success-float gold">{t.staked.claimedMsg}</p>
+                <div className="endgame-actions">
+                  <a className="btn primary small" href="#/carteira">
+                    {t.staked.seeWallet}
+                  </a>
+                  <button onClick={reset}>{t.staked.playAgain}</button>
+                </div>
+              </>
+            ) : ticket ? (
+              // mercado anulado on-chain: o claim do ticket devolve o stake líquido
+              <button className="primary" disabled={claiming} onClick={claim}>
+                {claiming
+                  ? t.staked.claiming
+                  : t.infinite.claimStake(
+                      formatSol(Math.floor(run.stakeLamports * 0.9))
+                    )}
+              </button>
+            ) : (
+              <div className="endgame-actions">
+                <a className="btn primary small" href="#/carteira">
+                  {t.staked.seeWallet}
+                </a>
+                <button onClick={reset}>{t.staked.playAgain}</button>
+              </div>
             )}
           </div>
         )}

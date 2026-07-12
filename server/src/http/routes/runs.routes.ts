@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { getChain } from "../../chain/client.js";
 import {
+  INFINITE_CAP_STREAK,
+  INFINITE_LADDER_BPS,
   MIN_STAKE_LAMPORTS,
   RUN_ODDS_BPS,
   cashoutRun,
@@ -20,6 +22,8 @@ runsRoutes.get("/config", (_req, res) => {
     enabled: Boolean(getChain()),
     odds: RUN_ODDS_BPS,
     minStakeLamports: MIN_STAKE_LAMPORTS,
+    infiniteLadder: INFINITE_LADDER_BPS,
+    infiniteCap: INFINITE_CAP_STREAK,
   });
 });
 
@@ -27,12 +31,19 @@ runsRoutes.post(
   "/",
   requireChain,
   asyncHandler(async (req, res) => {
-    const { wallet, target, stakeLamports } = req.body ?? {};
+    const { wallet, target, stakeLamports, mode } = req.body ?? {};
     if (typeof wallet !== "string" || !wallet) {
       throw new HttpError(400, "wallet obrigatória");
     }
     try {
-      res.json(await createRun(wallet, Number(target), Number(stakeLamports)));
+      res.json(
+        await createRun(
+          wallet,
+          Number(target),
+          Number(stakeLamports),
+          mode === "infinite" ? "infinite" : "target"
+        )
+      );
     } catch (err) {
       throw new HttpError(400, (err as Error).message);
     }

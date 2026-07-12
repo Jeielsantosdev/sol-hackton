@@ -145,16 +145,22 @@ da TxLINE no backend). O client nunca conhece o próximo valor antes de palpitar
 - [ ] Rotacionar as seeds da devnet antes de qualquer uso além do hackathon (já circularam em texto plano)
 - [ ] Saldo da authority (~0.8 SOL devnet): recarregar antes de demos com muitos usuários
 
-### 📋 Backlog por fase (o que falta do plano)
-- [ ] **Fase 1**: Infinite Hi-Lo com cash-out ladder (multiplicador crescente + botão CASH OUT;
-      o endpoint `/cashout` já existe, falta a regra de escada e a UI)
-- [ ] **Fase 2**: Guess the Stats — palpites por proximidade (off-chain, leaderboard) + mercados
-      de faixas bucketizadas por fixture×stat
-- [ ] **Fase 3**: Survivor — meta-jogo sobre os mercados 1X2 (vida/morte derivada dos eventos on-chain)
-- [ ] **Fase 4**: Penalty Predictor — mercados relâmpago; fazer antes o spike de latência do feed ao vivo
-- [ ] **Fase 5**: Live Challenge e Guess the Team (reusam os motores das fases 4 e 1)
-- [ ] **Transversal**: leaderboards, ranking na navbar (hoje "em breve"), jogo responsável/limites,
-      restringir CORS e mover rate-limit pra storage compartilhado antes de produção
+### 📋 Backlog por fase (atualizado em 2026-07-12)
+- [x] **Fase 1**: Infinite Hi-Lo (`#/hilo-infinito`) — escada de 12 degraus (1.2×→28×); CASH OUT
+      anula o mercado on-chain (claim devolve o stake) + lucro pago pela treasury; bater o topo
+      resolve com as odds cheias. E2E devnet verde (`e2e-infinite.ts`). Escada 100% on-chain
+      fica pra v2 do contrato (mercado-sessão).
+- [x] **Fase 2**: Guess the Stats (`#/stats`) — palpites por proximidade com resultado secreto no
+      server, raio-X palpite×real e leaderboard. Mercados bucketizados on-chain ficam no backlog.
+- [x] **Fase 3**: Survivor (`#/survivor`) — pick por rodada = aposta parimutuel real no 1X2;
+      vida/morte derivada da liquidação dos mercados; ranking de sobreviventes.
+- [x] **Fase 4**: Penalty Predictor (`#/penalty`) — modo demo simulado (probabilidades reais,
+      resultado secreto no server, pontos por raridade + multiplicador de sequência). Spike de
+      latência do feed ao vivo segue pendente pra versão on-chain relâmpago.
+- [ ] **Fase 5**: Live Challenge e Guess the Team — **em construção no hub**; motores prontos no
+      server (`/api/arcade/live`, `/api/quiz`), falta só a UI (a do Live reusa `Arcade.tsx`)
+- [ ] **Transversal**: leaderboards por jogo ✅ (`games/leaderboard.ts`); falta ranking global na
+      navbar, jogo responsável/limites, restringir CORS e rate-limit compartilhado pra produção
 
 ## 7. Ordem de execução sugerida (dependências)
 
