@@ -114,12 +114,34 @@ export interface GetGameDataOptions {
   maxAgeMs?: number;
 }
 
+// Um único refresh por vez: chamadas concorrentes (hub real-time, /matches,
+// criação de run, cron de mercados) compartilham a mesma Promise em vez de
+// disparar fetches TxLINE duplicados.
+let inFlight: Promise<GameData> | null = null;
+
+// Depois de uma falha, serve o fallback direto por um tempo em vez de
+// re-tentar o fetch completo a cada consumidor (o hub sozinho re-tentaria
+// a cada 45s, spammando a TxLINE e o log).
+let lastFailureAt = 0;
+const FAILURE_COOLDOWN_MS = 5 * 60 * 1000;
+
 export async function getGameData(opts: GetGameDataOptions = {}): Promise<GameData> {
   const maxAge = opts.maxAgeMs ?? CACHE_TTL_MS;
   if (memoryCache && Date.now() - memoryCache.fetchedAt < maxAge) {
     return memoryCache;
   }
+  if (memoryCache && Date.now() - lastFailureAt < FAILURE_COOLDOWN_MS) {
+    return memoryCache;
+  }
+  if (!inFlight) {
+    inFlight = refreshGameData().finally(() => {
+      inFlight = null;
+    });
+  }
+  return inFlight;
+}
 
+async function refreshGameData(): Promise<GameData> {
   try {
     const data = await fetchFromTxline();
     memoryCache = data;
@@ -127,8 +149,11 @@ export async function getGameData(opts: GetGameDataOptions = {}): Promise<GameDa
     fs.writeFileSync(CACHE_PATH, JSON.stringify(data));
     return data;
   } catch (err) {
+    lastFailureAt = Date.now();
     console.warn(
-      `[game] TxLINE indisponível (${(err as Error).message}) — usando fallback`
+      `[game] TxLINE indisponível (${(err as Error).message}) — fallback por ${
+        FAILURE_COOLDOWN_MS / 60000
+      }min`
     );
   }
 

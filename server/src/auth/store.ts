@@ -127,7 +127,9 @@ export async function findOrCreateUser(
     console.log(
       `[auth] usuário ${provider} criado: ${extras.email ?? subject.slice(0, 8)}`
     );
-    await fundWelcome(user);
+    // em background: o login não espera a confirmação on-chain do bônus
+    // (em devnet lenta isso segurava a resposta por 10-30s)
+    void fundWelcome(user);
   }
   return user;
 }

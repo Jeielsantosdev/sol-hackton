@@ -1,3 +1,4 @@
+import compression from "compression";
 import cors from "cors";
 import express from "express";
 import { errorHandler, notFoundHandler } from "./http/errors.js";
@@ -11,6 +12,8 @@ import { ticketsRoutes } from "./http/routes/tickets.routes.js";
 export function createApp(): express.Express {
   const app = express();
   app.use(cors());
+  // cast: @types/compression referencia outra cópia do express-serve-static-core
+  app.use(compression() as unknown as express.RequestHandler);
   app.use(express.json());
 
   app.use("/api/game", gameRoutes);

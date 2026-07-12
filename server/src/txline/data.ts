@@ -19,7 +19,9 @@ export interface Fixture {
 export function createClient(creds: TxlineCredentials): AxiosInstance {
   return axios.create({
     baseURL: apiOrigin,
-    timeout: 30000,
+    // 10s: uma TxLINE degradada não pode segurar o refresh por minutos
+    // (são dezenas de snapshots por refresh; o fallback cobre o resto)
+    timeout: 10000,
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${creds.jwt}`,
