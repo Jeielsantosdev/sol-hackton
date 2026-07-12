@@ -25,6 +25,9 @@ export interface LiveHub {
 
 export function attachLiveHub(server: Server): LiveHub {
   const wss = new WebSocketServer({ server, path: "/ws/live" });
+  // o ws re-emite erros do http.Server (ex.: EADDRINUSE) — sem handler o
+  // processo morre com throw dentro do EventEmitter; quem decide é o index.ts
+  wss.on("error", (err) => console.error(`[live] ${err.message}`));
   let last: GameData | null = null;
 
   const send = (ws: WebSocket, msg: unknown) => {

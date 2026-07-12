@@ -8,6 +8,17 @@ const server = http.createServer(createApp());
 const live = attachLiveHub(server);
 const stopCrons = startCrons();
 
+server.on("error", (err: NodeJS.ErrnoException) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(
+      `[server] porta ${PORT} já está em uso — outro server rodando? ` +
+        `Descubra com: ss -tlnp | grep :${PORT} (ou use PORT=outra no .env)`
+    );
+    process.exit(1);
+  }
+  throw err;
+});
+
 server.listen(PORT, () => {
   console.log(`ChainPlay server em http://localhost:${PORT} (rede TxLINE: ${NETWORK})`);
 });
