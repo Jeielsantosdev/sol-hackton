@@ -167,9 +167,7 @@ function Bridge({
       chosen.readyState === "Installed" || chosen.readyState === "Loadable";
     if (!ready) {
       // wallet listada mas não instalada neste navegador: orienta e abre o site
-      setError(
-        `${chosen.adapter.name} não está instalada neste navegador — instale a extensão e recarregue a página.`
-      );
+      setError(notInstalledMessage(chosen.adapter.name));
       window.open(chosen.adapter.url, "_blank", "noopener");
       return;
     }
@@ -217,9 +215,7 @@ function Bridge({
       setVisible(true);
       return;
     }
-    setError(
-      "Nenhuma wallet Solana encontrada — instale Phantom, Backpack ou Solflare e recarregue a página."
-    );
+    setError(notInstalledMessage());
   }
 
   async function disconnect() {
@@ -266,6 +262,21 @@ function Bridge({
       {children}
     </Ctx.Provider>
   );
+}
+
+/** Orientação quando não há wallet Solana utilizável neste navegador.
+ *  MetaMask (Ethereum) e Freighter (Stellar) não contam — precisa ser Solana.
+ *  No Firefox a opção com extensão é a Solflare; Phantom/Backpack são
+ *  Chrome/Brave/Edge. Enquanto isso, o modo convidado funciona sem wallet. */
+function notInstalledMessage(walletName?: string): string {
+  const isFirefox = /firefox/i.test(navigator.userAgent);
+  const suggestion = isFirefox
+    ? "No Firefox, instale a extensão Solflare (solflare.com) — Phantom e Backpack não têm versão pra Firefox."
+    : "Instale Phantom, Backpack ou Solflare e recarregue a página.";
+  const prefix = walletName
+    ? `${walletName} não está instalada neste navegador.`
+    : "Nenhuma wallet Solana encontrada (MetaMask/Freighter não servem — são de outras redes).";
+  return `${prefix} ${suggestion} Sem wallet, dá pra jogar como convidado.`;
 }
 
 function connectErrorMessage(e: { message?: string; name?: string }): string {
