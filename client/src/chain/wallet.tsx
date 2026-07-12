@@ -74,6 +74,17 @@ function Bridge({
       return;
     }
     wantConnect.current = false;
+    const chosen = adapter.wallet;
+    const ready =
+      chosen.readyState === "Installed" || chosen.readyState === "Loadable";
+    if (!ready) {
+      // wallet listada mas não instalada neste navegador: orienta e abre o site
+      setError(
+        `${chosen.adapter.name} não está instalada neste navegador — instale a extensão e recarregue a página.`
+      );
+      window.open(chosen.adapter.url, "_blank", "noopener");
+      return;
+    }
     adapter.connect().catch((e) => setError(connectErrorMessage(e)));
   }, [adapter.wallet, adapter.connected, adapter.connecting, adapter, setError]);
 
@@ -140,6 +151,9 @@ function Bridge({
 }
 
 function connectErrorMessage(e: { message?: string; name?: string }): string {
+  if (e?.name === "WalletNotReadyError") {
+    return "Essa wallet não está instalada neste navegador — instale a extensão e recarregue a página.";
+  }
   if (/reject|denied|cancel/i.test(`${e?.name} ${e?.message}`)) {
     return "Conexão recusada na wallet — tente de novo e aprove o popup.";
   }
