@@ -2,6 +2,7 @@ import compression from "compression";
 import cors from "cors";
 import express from "express";
 import { errorHandler, notFoundHandler } from "./http/errors.js";
+import { corsOptions, rateLimiter, securityHeaders } from "./http/security.js";
 import { arcadeRoutes } from "./http/routes/arcade.routes.js";
 import { authRoutes } from "./http/routes/auth.routes.js";
 import { custodialRoutes } from "./http/routes/custodial.routes.js";
@@ -16,10 +17,14 @@ import { ticketsRoutes } from "./http/routes/tickets.routes.js";
 
 export function createApp(): express.Express {
   const app = express();
-  app.use(cors());
+  // atrás de proxy (Vercel/nginx): confia no X-Forwarded-For pro rate limit por IP
+  app.set("trust proxy", 1);
+  app.use(securityHeaders);
+  app.use(cors(corsOptions()));
+  app.use(rateLimiter());
   // cast: @types/compression referencia outra cópia do express-serve-static-core
   app.use(compression() as unknown as express.RequestHandler);
-  app.use(express.json());
+  app.use(express.json({ limit: "64kb" }));
 
   app.use("/api/game", gameRoutes);
   app.use("/api/auth", authRoutes);

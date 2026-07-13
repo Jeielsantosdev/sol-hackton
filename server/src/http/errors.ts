@@ -26,6 +26,15 @@ export function errorHandler(
     return;
   }
   const message = err instanceof Error ? err.message : String(err);
+  // erros do express/body-parser trazem um status HTTP (ex.: 413 payload grande,
+  // 400 JSON malformado): respeita o status mas sem vazar a mensagem interna.
+  const status = (err as { status?: number; statusCode?: number })?.status
+    ?? (err as { statusCode?: number })?.statusCode;
+  if (typeof status === "number" && status >= 400 && status < 500) {
+    console.warn(`[http] ${req.method} ${req.path} → ${status}: ${message}`);
+    res.status(status).json({ error: "requisição inválida" });
+    return;
+  }
   console.error(`[http] ${req.method} ${req.path}: ${message}`);
   // mensagem interna (RPC/Anchor/simulação) fica só no log — não vaza ao cliente
   res.status(500).json({ error: "erro interno — tente novamente em instantes" });
