@@ -31,6 +31,10 @@ body {
   background-color: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  /* corta o transbordo horizontal na borda da viewport (não na borda da
+     coluna), para o mascote poder aparecer nas margens laterais em telas
+     largas sem gerar scroll horizontal; clip preserva a navbar sticky */
+  overflow-x: clip;
 }
 
 /* brilho de fundo removido a pedido — fundo fica limpo em near-black */
@@ -421,9 +425,8 @@ footer a:hover {
   display: flex;
   flex-direction: column;
   gap: clamp(72px, 8vw, 120px);
-  /* impede scroll horizontal quando o mascote extrapola a coluna;
-     clip (em vez de hidden) preserva a navbar sticky */
-  overflow-x: clip;
+  /* o corte do transbordo horizontal fica no body (borda da viewport),
+     para o mascote poder invadir as margens laterais em telas largas */
 }
 
 .topbar {
