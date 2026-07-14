@@ -26,7 +26,7 @@
 > | #9 catch vazio (SIWS) | ✅ Corrigido | `console.warn` antes de seguir |
 > | #11 err.message bruto no 500 | ✅ Corrigido | 500 devolve mensagem genérica; detalhe só no log |
 > | #12 parse de wallet sem try/catch | ✅ Corrigido | `listTickets` relança `HttpError(400)` |
-> | #13 erro de domínio → 400 cego | ✅ Parcial | rotas de runs/penalty repassam `HttpError` já lançado (409/429/403/404 preservados) em vez de reembrulhar tudo em 400 |
+> | #13 erro de domínio → 400 cego | ✅ Corrigido *(2026-07-14)* | toda camada de domínio lança `HttpError` com o status certo; o que não é `HttpError` vira 500 genérico em vez de 400 com mensagem interna — ver "Reverificação e fechamento" abaixo |
 > | #14 status 409/429 | ✅ Corrigido | `chain/runs.ts` lança `HttpError(409/429)` direto |
 > | #15 markets sem requireChain | ✅ Corrigido | `requireChain` aplicado em `markets.routes.ts` |
 > | #16 rotas sem asyncHandler | ✅ Corrigido | `/wallet/nonce`, `/wallet/:wallet`, `/:id` envoltos |
@@ -34,6 +34,27 @@
 > | #23 validação de input em runs | ✅ Corrigido | `target`/`stakeLamports` validados como inteiro na borda |
 > | #10 logger estruturado | ⏳ Adiado | prefixo por módulo já padronizado; logger central fica pra depois |
 > | #17/#18/#19/#20/#22 dívidas de consistência | ⏳ Adiado | renome de campos e pacote de tipos/PDA compartilhado — sem risco funcional, fora do escopo desta rodada |
+>
+> ### Reverificação e fechamento (2026-07-14)
+>
+> Os 16 achados marcados ✅ acima foram **auditados um a um contra o código** e confirmados
+> implementados; os três IDORs foram verificados **ao vivo** contra o server local (terceiro
+> autenticado recebe `403`, sem sessão recebe `401`, dono legítimo `200`) e a regressão está
+> na suíte `e2e:full` (**30 ✅ / 0 ❌** contra a devnet real).
+>
+> Nesta mesma rodada, **#13 saiu de "Parcial" para ✅** e três problemas que a auditoria
+> original não tinha alcançado foram corrigidos:
+>
+> | Achado | Status | Correção |
+> |---|---|---|
+> | #13 erro de domínio → 400 cego | ✅ **Corrigido** (era Parcial) | Toda camada de domínio (`runs`, `penalty`, `survivor`, `stats`, `quiz`, `arcade`, `markets`, `house`, `custodial`) lança `HttpError` com o status semântico (400/403/404/409/429/503). As rotas deixaram de reembrulhar cegamente: o que não é `HttpError` sobe e vira **500 genérico** no `errorHandler`. Fecha o resíduo do #11 — antes, um erro de infra (ex.: falha de decode do Anchor) vazava a mensagem interna crua dentro de um `400`. |
+> | *(novo)* Build quebrado em instalação limpa | ✅ Corrigido | `import { BN } from "@coral-xyz/anchor"` não resolve em Node ESM (o dist CJS não expõe o named export) — o server não subia num clone novo. Passou a importar de `bn.js` direto. No client, `@types/react@19` entrava por dependência transitiva e quebrava o `tsc`; fixado em 18 via `overrides`. |
+> | *(novo)* IDL do TxLINE em caminho errado | ✅ Corrigido | `src/txline/auth.ts` procurava os IDLs em `src/idl/` em vez de `idl/` — sem eles o oráculo não ativava e **nenhum mercado 1X2 era criado**. |
+>
+> As mudanças de **contrato** desta rodada (identidade NFT por jogo: `allowed_games`,
+> `place_bet(.., game_id)`, `mint_game_badge`, `update_game_collection`) e os achados
+> adversariais novos (#8, #9, #10) estão em **`docs/security-review.md` § 4** e a mecânica
+> completa em **`docs/nft-identidade-por-jogo.md`**.
 >
 > O texto original de cada achado abaixo foi preservado como registro histórico da
 > análise.

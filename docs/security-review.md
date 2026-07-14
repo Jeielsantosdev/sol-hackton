@@ -5,6 +5,10 @@
 > Metodologia: scanner de 6 padrões de vulnerabilidade Solana (Trail of Bits), revisão manual
 > do modelo econômico/estado, suíte Anchor (26 testes, incl. fuzzing com fast-check) e suíte
 > E2E da API contra a devnet real (25 asserções — `npm run e2e:full`).
+>
+> **Atualização 2026-07-14 — ver seção 4** (mudanças no contrato para a identidade NFT por
+> jogo e achados novos da rodada de testes adversariais). O program ID não mudou: todos os
+> deploys foram *upgrade in-place*.
 
 ## 1. Contrato — scanner de padrões Solana
 
@@ -73,3 +77,39 @@ Ver detalhamento (comportamento original e diff) em `docs/audit-log-integracao.m
 
 - `program/`: `bash scripts/test-local.sh` → **26 passing** (fluxos multiplayer/singleplayer/cancelamento, controle de acesso com impostor em todas as instruções, fuzzing de invariantes com fast-check). Requer `anchor build` atualizado — os artefatos de `target/` estavam defasados em relação ao fonte e foram regenerados (IDL novo é idêntico ao `server/idl/oddies_bet.json` usado em produção).
 - `server/`: `npm run e2e:full` → **25 ✅ / 0 ❌** contra a devnet real, incluindo o ciclo completo aposta → vitória → liquidação pelo cron → claim pago → double-claim bloqueado.
+
+## 4. Rodada de 2026-07-14 — identidade NFT por jogo
+
+Mudanças no contrato (upgrade in-place, mesmo program ID) e no server para dar a cada jogo
+uma Collection NFT própria. Mecânica completa em **`docs/nft-identidade-por-jogo.md`**;
+aqui ficam só as implicações de segurança.
+
+### Mudanças no contrato
+
+| Mudança | Por quê | Implicação de segurança |
+|---|---|---|
+| `Market.allowed_games: u8` (bitmask) + `place_bet(.., game_id)` | um mesmo mercado serve mais de um jogo (o pick do Survivor é uma aposta no mercado 1X2 do Guess the Team) — a coleção do ticket não podia ser herdada do mercado | **Nova superfície fechada**: o `game_id` da aposta é validado contra o `allowed_games` (`GameNotAllowed`), e as contas de coleção contra o jogo declarado (`GameMismatch`/`MissingGameCollection`). Não há como emitir NFT de um jogo que o mercado não habilita. `create_market` exige que o bit do jogo principal esteja no mask e que `GAME_NONE` venha com mask 0. |
+| `mint_game_badge(game_id)` | jogos sem aposta on-chain (Live Challenge) não tinham como ter identidade | Exige `has_one = authority` na config (só o server emite) e paga o rent com a authority. **O dedupe (1 badge por wallet/jogo, em `.data/badges.json`) é controle de fundos**, não só de produto: sem ele, farmar badges drenaria a carteira do server. Badge não dá direito a payout — não toca vault nem `Bet`. |
+| `update_game_collection(game_id, ..)` | metadata das coleções apontava para `localhost` — arte invisível para terceiros | Só a authority; a update authority das coleções segue sendo a PDA `collection_authority` (nenhuma chave externa verifica itens). Não altera membros já verificados. |
+| `Box<Account<..>>` em `PlaceBet` e `MintGameBadge` | — | **Correção de bug de memória**: o frame de `try_accounts` de `PlaceBet` passava de 4096 bytes (`Stack offset of 4104 exceeded max offset of 4096`), o que é comportamento indefinido. Em runtime, a devnet rejeitava toda aposta com um `ConstraintMut` fantasma na conta `bettor` — a transação estava correta. Compila sem nenhum aviso de stack agora. |
+
+### Achados novos (rodada de testes adversariais, 2026-07-14)
+
+| # | Achado | Severidade | Status |
+|---|---|---|---|
+| 8 | **`gameId` desconhecido emitia ticket sem identidade** — `POST /api/custodial/place-bet` com `gameId: 99` retornava 200: o server degradava para `GAME_NONE` e a aposta saía sem NFT nenhuma. Não é forja (não dá para emitir na coleção de outro jogo), mas fura silenciosamente a promessa "toda aposta vira NFT" e o jogador perde o colecionável sem saber. | Baixa | ✅ **Corrigido** — `gameId` fora do registro → `400`. Regressão no `e2e:games`. |
+| 9 | **Jogo não habilitado no mercado devolvia 500** — o contrato bloqueava corretamente (`GameNotAllowed`), mas o revert subia como "erro interno" genérico: gastava transação e escondia a causa. | Baixa (UX/observabilidade) | ✅ **Corrigido** — validação de `allowed_games` na borda (server e client) → `403` claro antes de assinar. Regressão no `e2e:games`. |
+| 10 | **NFT do vencedor é queimada no `claim`** — o `token::burn` do ticket (defesa contra resgate duplo, redundante com `bet.claimed`) faz com que **quem ganha perca o colecionável e quem perde fique com ele**. | — (decisão de produto) | ⏳ **Em aberto** — 3 opções avaliadas em `docs/nft-identidade-por-jogo.md`. |
+
+### Achados operacionais corrigidos na mesma rodada
+
+- **Custo por aposta subiu com o ticket-NFT** (≈ 0.0117 SOL, dos quais 0.0056 é rent da metadata Metaplex). O bônus de boas-vindas de 0.03 SOL só cobria **2 apostas** — o jogador travava no meio da sessão com falha de saldo mascarada como erro interno. Subiu para 0.15 SOL (≈ 12 apostas).
+- **PDAs de mercado colidindo entre versões do programa**: `market_id = fixture_id` fazia o `create_market` bater em contas do layout anterior ("conta já existe") — o fixture ficava sem mercado para sempre. `market_id` de fixture agora tem epoch de versão (`FIXTURE_MARKET_EPOCH`), bumpado a cada mudança no layout de `Market`.
+- **Uma conta `Bet` do layout antigo derrubava a listagem inteira de tickets** (`bet.all()` falhava no decode). Agora as contas são decodificadas uma a uma e as obsoletas ignoradas.
+
+### Evidências desta rodada
+
+- `npm run verify:collections` → **10 ✅ / 0 ❌** (devnet): coleção existe, ticket é membro **verificado**, `place_bet` sem contas de coleção bloqueado, `game_id` fora do mask → `GameNotAllowed`, badge verificado.
+- `npm run e2e:games` (novo) → **40 ✅ / 0 ❌**: joga os **7 jogos** via HTTP (as mesmas requisições do browser) e confere **na chain** que cada NFT que cai na carteira é membro verificado da coleção certa — incluindo as duas tentativas de forja acima.
+- `npm run e2e:full` → **30 ✅ / 0 ❌**.
+- ⚠️ **Pendente**: a suíte Anchor local não foi executada nesta rodada (os testes novos de `allowed_games` estão escritos em `program/tests/oddies-bet.ts`, mas o `solana-test-validator` não subiu no ambiente). O caminho de **wallet externa** (Phantom/Solflare) foi tipado e revisado, mas só o caminho custodial foi exercitado de ponta a ponta.

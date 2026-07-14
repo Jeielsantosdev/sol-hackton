@@ -221,6 +221,32 @@ async function main() {
     await checkNftOfGame("Survivor", wallet, 3, before);
   }
 
+  // ---- 4b) adversarial: não dá pra forjar a NFT de outro jogo ----
+  console.log("\n4b. Tentativas de forjar a identidade da NFT");
+  if (open) {
+    const forged = await api(
+      "/api/custodial/place-bet",
+      // Penalty (2) não está no allowed_games do mercado 1X2
+      { marketId: open.marketId, outcome: 0, lamports: 1_000_000, gameId: 2 },
+      token
+    );
+    check(
+      "apostar declarando jogo não habilitado no mercado → 403",
+      forged.status === 403,
+      `status ${forged.status}`
+    );
+    const bogus = await api(
+      "/api/custodial/place-bet",
+      { marketId: open.marketId, outcome: 0, lamports: 1_000_000, gameId: 99 },
+      token
+    );
+    check(
+      "gameId inexistente → 400 (não emite ticket sem identidade)",
+      bogus.status === 400,
+      `status ${bogus.status}`
+    );
+  }
+
   // ---- 5) Guess the Team (mesmo mercado, coleção diferente) ----
   console.log("\n5. Guess the Team — mesmo mercado 1X2, coleção do jogo dele");
   before = await nftsOf(wallet);

@@ -13,6 +13,7 @@ import {
   collectionAccounts,
   configPda,
   GAME_NONE,
+  GAMES,
   getChain,
   marketPda,
   TOKEN_PROGRAM_ID,
@@ -52,6 +53,16 @@ export async function custodialPlaceBet(
   // usa o jogo principal do mercado; se a coleção ainda não existe on-chain,
   // degrada pra GAME_NONE (ticket sem coleção) — o contrato valida o resto.
   const requested = gameId ?? marketAcc.gameId;
+  // Só o mercado sem jogo aceita apostar sem identidade: um game_id
+  // desconhecido é erro do chamador, não motivo pra emitir ticket sem NFT.
+  if (requested !== GAME_NONE && !GAMES.some((g) => g.id === requested)) {
+    throw new HttpError(400, "gameId desconhecido");
+  }
+  // O jogo precisa estar habilitado no mercado (allowed_games) — o contrato
+  // rejeita, mas checar aqui devolve 403 claro em vez de um revert genérico.
+  if (requested !== GAME_NONE && !(marketAcc.allowedGames & (1 << requested))) {
+    throw new HttpError(403, "esse jogo não pode apostar neste mercado");
+  }
   const collection = await collectionAccounts(chain.program, requested, ticketMint.publicKey);
   const effectiveGameId = collection.gameCollection ? requested : GAME_NONE;
   const signature = await chain.program.methods

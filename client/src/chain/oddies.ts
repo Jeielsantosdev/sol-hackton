@@ -168,6 +168,13 @@ export async function placeBet(
   // o ticket entra na coleção-identidade do jogo declarado (degrada pra sem
   // coleção enquanto ela não existir on-chain)
   const requested = gameId ?? marketAcc.gameId;
+  // o contrato rejeita, mas falhar aqui dá mensagem clara em vez de revert
+  if (
+    requested !== GAME_NONE &&
+    !((marketAcc.allowedGames as number) & (1 << (requested as number)))
+  ) {
+    throw new Error("esse jogo não pode apostar neste mercado");
+  }
   const collection = await collectionAccounts(program, requested, ticketMint.publicKey);
   const effectiveGameId = collection.gameCollection ? requested : GAME_NONE;
 
