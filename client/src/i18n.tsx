@@ -397,20 +397,16 @@ const pt = {
     lead: "O essencial antes de dar o primeiro palpite.",
     items: [
       {
-        q: "Precisa pagar ou cadastrar alguma coisa?",
-        a: "Não. O jogo é 100% gratuito, roda direto no navegador e não pede e-mail, carteira cripto nem instalação de app.",
+        q: "Do I need to deposit to start making predictions?",
+        a: "Yes. To place your predictions and earn real rewards, you must connect your crypto wallet (Solana) and have a balance available on the platform.",
       },
       {
-        q: "De onde vêm as estatísticas?",
-        a: "Do feed TxLINE (TxODDS), com acesso provado por transação on-chain na Solana. Qualquer pessoa pode auditar os dados — nada é inventado.",
+        q: "Where do the data and market results come from?",
+        a: "From the TxLINE (TxODDS) feed. All market resolutions are settled via on-chain transactions on the Solana blockchain, ensuring 100% public, auditable, and tamper-proof results.",
       },
       {
-        q: "O que acontece quando eu erro?",
-        a: "A run acaba na hora. Você pode compartilhar o placar em um toque e recomeçar — as categorias são sorteadas de novo a cada partida, então nenhuma run é igual à outra.",
-      },
-      {
-        q: "Isso é aposta?",
-        a: "Não. É um jogo de entretenimento sem dinheiro real, sem odds e sem prêmios em dinheiro. Só você, os dados e a sua sequência.",
+        q: "What happens if my prediction is incorrect?",
+        a: "If your prediction is wrong, the funds allocated to that position are lost. However, you can open new positions and join other active markets instantly.",
       },
     ],
   },
@@ -933,20 +929,16 @@ const en: Dict = {
     lead: "The essentials before your first guess.",
     items: [
       {
-        q: "Do I have to pay or sign up for anything?",
-        a: "No. The game is 100% free, runs right in the browser and asks for no e-mail, crypto wallet or app install.",
+        q: "Do I need to deposit to start making predictions?",
+        a: "Yes. To place your predictions and earn real rewards, you must connect your crypto wallet (Solana) and have a balance available on the platform.",
       },
       {
-        q: "Where do the stats come from?",
-        a: "From the TxLINE feed (TxODDS), with access proven by an on-chain transaction on Solana. Anyone can audit the data — nothing is made up.",
+        q: "Where do the data and market results come from?",
+        a: "From the TxLINE (TxODDS) feed. All market resolutions are settled via on-chain transactions on the Solana blockchain, ensuring 100% public, auditable, and tamper-proof results.",
       },
       {
-        q: "What happens when I miss?",
-        a: "The run ends right there. You can share your score in one tap and start over — categories are drawn again every run, so no two runs are the same.",
-      },
-      {
-        q: "Is this betting?",
-        a: "No. It's an entertainment game with no real money, no odds and no cash prizes. Just you, the data and your streak.",
+        q: "What happens if my prediction is incorrect?",
+        a: "If your prediction is wrong, the funds allocated to that position are lost. However, you can open new positions and join other active markets instantly.",
       },
     ],
   },
