@@ -257,6 +257,10 @@
         {
           "name": "game_id",
           "type": "u8"
+        },
+        {
+          "name": "allowed_games",
+          "type": "u8"
         }
       ]
     },
@@ -356,11 +360,103 @@
       ]
     },
     {
+      "name": "mint_game_badge",
+      "docs": [
+        "Emite um badge-NFT de identidade de um jogo (supply 1, membro da",
+        "Collection NFT do jogo) direto para a wallet do jogador. Cobre jogos sem",
+        "aposta on-chain (ex.: Live Challenge): o backend (authority) decide o",
+        "merecimento (ex.: completou um desafio) e paga o rent. O badge não dá",
+        "direito a prêmio — é identidade/colecionável, diferente do ticket de aposta."
+      ],
+      "discriminator": [
+        55,
+        20,
+        63,
+        219,
+        38,
+        154,
+        235,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Backend do jogo: autoriza a emissão e paga o rent do badge."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "recipient"
+        },
+        {
+          "name": "game_collection"
+        },
+        {
+          "name": "badge_mint",
+          "docs": [
+            "Badge-NFT do jogador: mint novo (keypair) a cada emissão — cada badge é",
+            "um NFT único (supply 1 por mint); a coleção do jogo não tem limite."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "badge_account",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "badge_metadata",
+          "writable": true
+        },
+        {
+          "name": "collection_mint",
+          "writable": true
+        },
+        {
+          "name": "collection_metadata",
+          "writable": true
+        },
+        {
+          "name": "collection_master_edition"
+        },
+        {
+          "name": "collection_authority"
+        },
+        {
+          "name": "token_metadata_program"
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program"
+        },
+        {
+          "name": "rent"
+        }
+      ],
+      "args": [
+        {
+          "name": "game_id",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "place_bet",
       "docs": [
         "Aposta: cobra a taxa para a wallet do time, deposita o líquido no vault,",
         "registra a Bet e minta o ticket-NFT (supply 1, decimals 0) para o apostador.",
-        "Quem segurar o ticket é quem resgata o prêmio — a aposta é transferível."
+        "Quem segurar o ticket é quem resgata o prêmio — a aposta é transferível.",
+        "`game_id` declara qual jogo o apostador está jogando: precisa estar no",
+        "`allowed_games` do mercado, e o ticket entra na coleção desse jogo.",
+        "GAME_NONE = ticket sem coleção (permitido em qualquer mercado)."
       ],
       "discriminator": [
         222,
@@ -422,7 +518,7 @@
         {
           "name": "game_collection",
           "docs": [
-            "Registro da coleção do jogo do mercado (define nome/arte do ticket)."
+            "Registro da coleção do jogo declarado na aposta (define nome/arte do ticket)."
           ],
           "optional": true
         },
@@ -465,6 +561,10 @@
         {
           "name": "amount",
           "type": "u64"
+        },
+        {
+          "name": "game_id",
+          "type": "u8"
         }
       ]
     },
@@ -548,6 +648,72 @@
           "type": {
             "option": "u16"
           }
+        }
+      ]
+    },
+    {
+      "name": "update_game_collection",
+      "docs": [
+        "Atualiza a identidade de uma coleção de jogo (nome/símbolo/URI) — no PDA",
+        "e na metadata Metaplex da Collection NFT. Só a authority. Usado para",
+        "migrar o metadata de um host local para um público sem recriar a coleção",
+        "(os membros já verificados não são afetados)."
+      ],
+      "discriminator": [
+        95,
+        25,
+        17,
+        203,
+        96,
+        70,
+        226,
+        13
+      ],
+      "accounts": [
+        {
+          "name": "config"
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "game_collection",
+          "writable": true
+        },
+        {
+          "name": "collection_mint",
+          "docs": [
+            "Mint da coleção — amarra a metadata abaixo à coleção deste jogo."
+          ]
+        },
+        {
+          "name": "collection_metadata",
+          "writable": true
+        },
+        {
+          "name": "collection_authority"
+        },
+        {
+          "name": "token_metadata_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "game_id",
+          "type": "u8"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "symbol",
+          "type": "string"
+        },
+        {
+          "name": "uri",
+          "type": "string"
         }
       ]
     },
@@ -653,6 +819,19 @@
     }
   ],
   "events": [
+    {
+      "name": "BadgeMinted",
+      "discriminator": [
+        53,
+        227,
+        68,
+        72,
+        115,
+        78,
+        25,
+        14
+      ]
+    },
     {
       "name": "BetPlaced",
       "discriminator": [
@@ -798,9 +977,34 @@
       "code": 6020,
       "name": "GameMismatch",
       "msg": "Coleção não corresponde ao jogo do mercado"
+    },
+    {
+      "code": 6021,
+      "name": "GameNotAllowed",
+      "msg": "Jogo não habilitado neste mercado"
     }
   ],
   "types": [
+    {
+      "name": "BadgeMinted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_id",
+            "type": "u8"
+          },
+          {
+            "name": "badge_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
     {
       "name": "Bet",
       "type": {
@@ -816,6 +1020,13 @@
           },
           {
             "name": "outcome",
+            "type": "u8"
+          },
+          {
+            "name": "game_id",
+            "docs": [
+              "Jogo declarado na aposta (coleção do ticket). GAME_NONE = sem coleção."
+            ],
             "type": "u8"
           },
           {
@@ -862,6 +1073,10 @@
           },
           {
             "name": "outcome",
+            "type": "u8"
+          },
+          {
+            "name": "game_id",
             "type": "u8"
           },
           {
@@ -979,7 +1194,15 @@
           {
             "name": "game_id",
             "docs": [
-              "Jogo do mercado: define a coleção-identidade dos tickets. GAME_NONE = sem coleção."
+              "Jogo principal do mercado (rótulo/fallback). GAME_NONE = sem coleção."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "allowed_games",
+            "docs": [
+              "Bitmask dos jogos habilitados a apostar aqui (bit N = game_id N); cada",
+              "aposta declara seu jogo no place_bet e entra na coleção correspondente."
             ],
             "type": "u8"
           },

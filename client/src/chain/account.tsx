@@ -51,7 +51,12 @@ interface AccountCtx {
   loginGoogle(credential: string): Promise<void>;
   loginGuest(): Promise<void>;
   logout(): Promise<void>;
-  placeBet(marketId: string, outcome: number, lamports: number): Promise<PlacedBet>;
+  placeBet(
+    marketId: string,
+    outcome: number,
+    lamports: number,
+    gameId?: number
+  ): Promise<PlacedBet>;
   claim(market: string, ticketMint: string, ticketAccount: string): Promise<void>;
 }
 
@@ -199,14 +204,20 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const address = wallet.address ?? session?.address ?? null;
 
   const placeBet = useCallback(
-    async (marketId: string, outcome: number, lamports: number): Promise<PlacedBet> => {
+    // gameId declara o jogo (coleção do ticket-NFT); sem ele vale o principal do mercado
+    async (
+      marketId: string,
+      outcome: number,
+      lamports: number,
+      gameId?: number
+    ): Promise<PlacedBet> => {
       if (wallet.address && wallet.provider) {
-        return walletPlaceBet(wallet.provider, marketId, outcome, lamports);
+        return walletPlaceBet(wallet.provider, marketId, outcome, lamports, gameId);
       }
       if (session) {
         const r = await api(
           "/api/custodial/place-bet",
-          { marketId, outcome, lamports },
+          { marketId, outcome, lamports, gameId },
           session.token
         );
         return { ...r, bet: "" };

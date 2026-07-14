@@ -719,6 +719,10 @@ const pt = {
     demoNote:
       "Modo demo: eventos simulados com probabilidades reais — o feed ao vivo da TxLINE entra nesta mesma tela.",
     connectFirst: "Conecte-se pra pontuar no ranking (grátis).",
+    badgeHint: "Acerte um desafio e resgate a NFT de identidade do jogo — grátis.",
+    badgeClaim: "Resgatar NFT do jogo",
+    badgeClaiming: "Emitindo NFT…",
+    badgeOwned: "NFT do jogo na sua carteira ✓",
   },
 
   quiz: {
@@ -1556,6 +1560,10 @@ const en: Dict = {
     demoNote:
       "Demo mode: simulated events with realistic probabilities — the TxLINE live feed plugs into this same screen.",
     connectFirst: "Sign in to score on the leaderboard (free).",
+    badgeHint: "Hit a challenge and claim the game's identity NFT — free.",
+    badgeClaim: "Claim game NFT",
+    badgeClaiming: "Minting NFT…",
+    badgeOwned: "Game NFT in your wallet ✓",
   },
 
   quiz: {

@@ -18,6 +18,16 @@ export const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
 );
 export const GAME_NONE = 255;
+/** Ids canônicos dos jogos — precisam casar com GAME_COUNT/registry do server. */
+export const GAME = {
+  hilo: 0,
+  infinite: 1,
+  penalty: 2,
+  survivor: 3,
+  stats: 4,
+  team: 5,
+  live: 6,
+} as const;
 export const LAMPORTS_PER_SOL = 1_000_000_000;
 
 let rpcUrl = "https://api.devnet.solana.com";
@@ -86,8 +96,17 @@ export const collectionAuthorityPda = () =>
 
 /** Contas opcionais de coleção do place_bet a partir do game_id do mercado. */
 async function collectionAccounts(program: Program, gameId: number, ticketMint: PublicKey) {
-  // contas opcionais: omitidas quando não há coleção (place_bet as ignora)
-  const none: Record<string, PublicKey> = {};
+  // contas opcionais: `null` explícito quando não há coleção — o client TS do
+  // Anchor exige o valor (vira placeholder on-chain), não aceita omissão
+  const none: Record<string, PublicKey | null> = {
+    gameCollection: null,
+    ticketMetadata: null,
+    collectionMint: null,
+    collectionMetadata: null,
+    collectionMasterEdition: null,
+    collectionAuthority: null,
+    tokenMetadataProgram: null,
+  };
   if (gameId === GAME_NONE || gameId == null) return none;
   const gc = gameCollectionPda(gameId);
   const gcAcc: any = await (program.account as any).gameCollection
@@ -124,12 +143,15 @@ export interface PlacedBet {
 /**
  * Aposta: minta o ticket-NFT pro apostador. O mint e a token account são
  * keypairs novos gerados aqui — assinam junto com a wallet do jogador.
+ * `gameId` declara qual jogo está sendo jogado (define a coleção do ticket);
+ * sem ele vale o jogo principal do mercado.
  */
 export async function placeBet(
   injected: InjectedProvider,
   marketIdStr: string,
   outcome: number,
-  lamports: number
+  lamports: number,
+  gameId?: number
 ): Promise<PlacedBet> {
   if (!injected.publicKey) throw new Error("wallet não conectada");
   const program = await getProgram(injected);
@@ -143,11 +165,14 @@ export async function placeBet(
   const ticketMint = Keypair.generate();
   const ticketAccount = Keypair.generate();
   const bet = betPda(market, ticketMint.publicKey);
-  // o ticket entra na coleção-identidade do jogo do mercado
-  const collection = await collectionAccounts(program, marketAcc.gameId, ticketMint.publicKey);
+  // o ticket entra na coleção-identidade do jogo declarado (degrada pra sem
+  // coleção enquanto ela não existir on-chain)
+  const requested = gameId ?? marketAcc.gameId;
+  const collection = await collectionAccounts(program, requested, ticketMint.publicKey);
+  const effectiveGameId = collection.gameCollection ? requested : GAME_NONE;
 
   const signature = await program.methods
-    .placeBet(outcome, new BN(lamports))
+    .placeBet(outcome, new BN(lamports), effectiveGameId)
     .accountsPartial({
       config: configPda(),
       market,

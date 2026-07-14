@@ -5,7 +5,8 @@
  *
  *   npm run e2e:run
  */
-import { BN } from "@coral-xyz/anchor";
+// bn.js direto: o dist CJS do anchor não expõe BN como named export em Node ESM
+import BN from "bn.js";
 import {
   ComputeBudgetProgram,
   Keypair,
@@ -14,6 +15,7 @@ import {
   SYSVAR_RENT_PUBKEY,
 } from "@solana/web3.js";
 import {
+  GAME_NONE,
   betPda,
   collectionAccounts,
   configPda,
@@ -21,6 +23,12 @@ import {
   TOKEN_PROGRAM_ID,
   vaultPda,
 } from "../chain/client.js";
+
+/** Jogo declarado na aposta: o principal do mercado, degradando pra GAME_NONE
+ *  quando a coleção ainda não existe (collectionAccounts vazio). */
+function effectiveGame(marketAcc: any, collection: Record<string, unknown>): number {
+  return collection.gameCollection != null ? marketAcc.gameId : GAME_NONE;
+}
 
 const API = process.env.API_URL || "http://localhost:3001";
 
@@ -73,7 +81,7 @@ async function main() {
   const ticketAccount = Keypair.generate();
   const collection = await collectionAccounts(chain.program, marketAcc.gameId, ticketMint.publicKey);
   await chain.program.methods
-    .placeBet(0, new BN(run.stakeLamports))
+    .placeBet(0, new BN(run.stakeLamports), effectiveGame(marketAcc, collection))
     .accountsPartial({
       config: configPda(),
       market,

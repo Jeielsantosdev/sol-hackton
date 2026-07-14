@@ -2,8 +2,10 @@ use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 use anchor_spl::metadata::{
     create_master_edition_v3, create_metadata_accounts_v3, set_and_verify_sized_collection_item,
+    update_metadata_accounts_v2,
     mpl_token_metadata::types::{CollectionDetails, DataV2},
     CreateMasterEditionV3, CreateMetadataAccountsV3, Metadata, SetAndVerifySizedCollectionItem,
+    UpdateMetadataAccountsV2,
 };
 use anchor_spl::token::{self, Burn, Mint, MintTo, SetAuthority, Token, TokenAccount};
 
@@ -138,6 +140,56 @@ pub mod oddies_bet {
         Ok(())
     }
 
+    /// Atualiza a identidade de uma coleção de jogo (nome/símbolo/URI) — no PDA
+    /// e na metadata Metaplex da Collection NFT. Só a authority. Usado para
+    /// migrar o metadata de um host local para um público sem recriar a coleção
+    /// (os membros já verificados não são afetados).
+    pub fn update_game_collection(
+        ctx: Context<UpdateGameCollection>,
+        game_id: u8,
+        name: String,
+        symbol: String,
+        uri: String,
+    ) -> Result<()> {
+        require!(name.len() <= MAX_NFT_NAME_LEN, BetError::MetadataTooLong);
+        require!(symbol.len() <= MAX_NFT_SYMBOL_LEN, BetError::MetadataTooLong);
+        require!(uri.len() <= MAX_NFT_URI_LEN, BetError::MetadataTooLong);
+
+        let gc = &mut ctx.accounts.game_collection;
+        require!(gc.game_id == game_id, BetError::GameMismatch);
+        gc.ticket_name = name.clone();
+        gc.ticket_symbol = symbol.clone();
+        gc.ticket_uri = uri.clone();
+
+        let col_signer: &[&[&[u8]]] = &[&[
+            b"collection_authority",
+            &[gc.collection_authority_bump],
+        ]];
+        update_metadata_accounts_v2(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_metadata_program.to_account_info(),
+                UpdateMetadataAccountsV2 {
+                    metadata: ctx.accounts.collection_metadata.to_account_info(),
+                    update_authority: ctx.accounts.collection_authority.to_account_info(),
+                },
+                col_signer,
+            ),
+            None, // update authority: mantém a PDA
+            Some(DataV2 {
+                name,
+                symbol,
+                uri,
+                seller_fee_basis_points: 0,
+                creators: None,
+                collection: None,
+                uses: None,
+            }),
+            None,       // primary_sale_happened: mantém
+            Some(true), // segue mutável (permite futuras migrações de host)
+        )?;
+        Ok(())
+    }
+
     /// Abre um mercado de apostas para um fixture (partida).
     ///
     /// - `Parimutuel` (multiplayer): os apostadores dividem o pote entre si; odds emergem do pool.
@@ -152,17 +204,29 @@ pub mod oddies_bet {
         close_ts: i64,
         resolve_after_ts: i64,
         game_id: u8,
+        allowed_games: u8,
     ) -> Result<()> {
         require!(
             outcome_count >= 2 && (outcome_count as usize) <= MAX_OUTCOMES,
             BetError::InvalidOutcomeCount
         );
-        // game_id identifica de qual jogo é o mercado (define a coleção-identidade
-        // dos tickets). GAME_NONE = mercado sem coleção (demo/genérico).
+        // game_id identifica o jogo principal do mercado; allowed_games é o bitmask
+        // (bit N = game_id N) dos jogos que podem apostar aqui — um mesmo mercado
+        // pode servir a mais de um jogo (ex.: fixture 1X2 vale pra Guess the Team e
+        // Survivor) e cada aposta declara seu jogo no place_bet, que valida contra
+        // o mask e verifica o ticket na coleção correspondente.
+        // GAME_NONE + mask 0 = mercado sem coleção (demo/genérico).
         require!(
             game_id < GAME_COUNT || game_id == GAME_NONE,
             BetError::InvalidGameId
         );
+        require!(allowed_games >> GAME_COUNT == 0, BetError::InvalidGameId);
+        if game_id == GAME_NONE {
+            require!(allowed_games == 0, BetError::InvalidGameId);
+        } else {
+            // o jogo principal precisa estar habilitado no próprio mercado
+            require!(allowed_games & (1 << game_id) != 0, BetError::InvalidGameId);
+        }
         let now = Clock::get()?.unix_timestamp;
         require!(close_ts > now, BetError::CloseInPast);
         // close_ts é o início da partida; resolve_after_ts precisa dar tempo dela terminar
@@ -179,6 +243,7 @@ pub mod oddies_bet {
         market.market_id = market_id;
         market.fixture_id = fixture_id;
         market.game_id = game_id;
+        market.allowed_games = allowed_games;
         market.kind = kind;
         market.state = MarketState::Open;
         market.outcome_count = outcome_count;
@@ -229,13 +294,23 @@ pub mod oddies_bet {
     /// Aposta: cobra a taxa para a wallet do time, deposita o líquido no vault,
     /// registra a Bet e minta o ticket-NFT (supply 1, decimals 0) para o apostador.
     /// Quem segurar o ticket é quem resgata o prêmio — a aposta é transferível.
-    pub fn place_bet(ctx: Context<PlaceBet>, outcome: u8, amount: u64) -> Result<()> {
+    /// `game_id` declara qual jogo o apostador está jogando: precisa estar no
+    /// `allowed_games` do mercado, e o ticket entra na coleção desse jogo.
+    /// GAME_NONE = ticket sem coleção (permitido em qualquer mercado).
+    pub fn place_bet(ctx: Context<PlaceBet>, outcome: u8, amount: u64, game_id: u8) -> Result<()> {
         let market = &mut ctx.accounts.market;
         require!(market.state == MarketState::Open, BetError::MarketNotOpen);
         let now = Clock::get()?.unix_timestamp;
         require!(now < market.close_ts, BetError::BettingClosed);
         require!(outcome < market.outcome_count, BetError::InvalidOutcome);
         require!(amount > 0, BetError::ZeroAmount);
+        if game_id != GAME_NONE {
+            require!(game_id < GAME_COUNT, BetError::InvalidGameId);
+            require!(
+                market.allowed_games & (1 << game_id) != 0,
+                BetError::GameNotAllowed
+            );
+        }
 
         let fee = (amount as u128 * ctx.accounts.config.fee_bps as u128
             / BPS_DENOMINATOR as u128) as u64;
@@ -300,6 +375,7 @@ pub mod oddies_bet {
         bet.market = market.key();
         bet.ticket_mint = ctx.accounts.ticket_mint.key();
         bet.outcome = outcome;
+        bet.game_id = game_id;
         bet.stake_net = net;
         bet.fixed_payout = payout;
         bet.claimed = false;
@@ -321,18 +397,18 @@ pub mod oddies_bet {
             1,
         )?;
 
-        // Metadados + identidade do jogo: cria a metadata do ticket e, se o
-        // mercado pertence a um jogo com coleção, verifica o ticket como membro
-        // da Collection NFT desse jogo (a arte/identidade do jogo passa a
-        // aparecer na carteira do apostador). Feito enquanto o `market` ainda é
+        // Metadados + identidade do jogo: cria a metadata do ticket e, se a
+        // aposta declara um jogo, verifica o ticket como membro da Collection
+        // NFT desse jogo (a arte/identidade do jogo passa a aparecer na
+        // carteira do apostador). Feito enquanto o `market` ainda é
         // mint authority — a metadata exige a mint authority como signer.
-        if market.game_id != GAME_NONE {
+        if game_id != GAME_NONE {
             let game = ctx
                 .accounts
                 .game_collection
                 .as_ref()
                 .ok_or(BetError::MissingGameCollection)?;
-            require!(game.game_id == market.game_id, BetError::GameMismatch);
+            require!(game.game_id == game_id, BetError::GameMismatch);
             let collection_mint = ctx
                 .accounts
                 .collection_mint
@@ -438,6 +514,7 @@ pub mod oddies_bet {
             ticket_mint: ctx.accounts.ticket_mint.key(),
             bettor: ctx.accounts.bettor.key(),
             outcome,
+            game_id,
             amount,
             net,
         });
@@ -611,6 +688,107 @@ pub mod oddies_bet {
         }
         Ok(())
     }
+
+    /// Emite um badge-NFT de identidade de um jogo (supply 1, membro da
+    /// Collection NFT do jogo) direto para a wallet do jogador. Cobre jogos sem
+    /// aposta on-chain (ex.: Live Challenge): o backend (authority) decide o
+    /// merecimento (ex.: completou um desafio) e paga o rent. O badge não dá
+    /// direito a prêmio — é identidade/colecionável, diferente do ticket de aposta.
+    pub fn mint_game_badge(ctx: Context<MintGameBadge>, game_id: u8) -> Result<()> {
+        require!(game_id < GAME_COUNT, BetError::InvalidGameId);
+        let game = &ctx.accounts.game_collection;
+        require!(game.game_id == game_id, BetError::GameMismatch);
+
+        let col_signer: &[&[&[u8]]] = &[&[
+            b"collection_authority",
+            &[game.collection_authority_bump],
+        ]];
+
+        // 1) minta 1 badge pra conta do jogador (mint authority = PDA da coleção)
+        token::mint_to(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                MintTo {
+                    mint: ctx.accounts.badge_mint.to_account_info(),
+                    to: ctx.accounts.badge_account.to_account_info(),
+                    authority: ctx.accounts.collection_authority.to_account_info(),
+                },
+                col_signer,
+            ),
+            1,
+        )?;
+
+        // 2) metadata do badge com a identidade do jogo (mesmo nome/arte da coleção)
+        create_metadata_accounts_v3(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_metadata_program.to_account_info(),
+                CreateMetadataAccountsV3 {
+                    metadata: ctx.accounts.badge_metadata.to_account_info(),
+                    mint: ctx.accounts.badge_mint.to_account_info(),
+                    mint_authority: ctx.accounts.collection_authority.to_account_info(),
+                    payer: ctx.accounts.authority.to_account_info(),
+                    update_authority: ctx.accounts.collection_authority.to_account_info(),
+                    system_program: ctx.accounts.system_program.to_account_info(),
+                    rent: ctx.accounts.rent.to_account_info(),
+                },
+                col_signer,
+            ),
+            DataV2 {
+                name: game.ticket_name.clone(),
+                symbol: game.ticket_symbol.clone(),
+                uri: game.ticket_uri.clone(),
+                seller_fee_basis_points: 0,
+                creators: None,
+                collection: None,
+                uses: None,
+            },
+            true,
+            false,
+            None,
+        )?;
+
+        // 3) verifica o badge como membro da coleção do jogo (size cresce)
+        set_and_verify_sized_collection_item(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_metadata_program.to_account_info(),
+                SetAndVerifySizedCollectionItem {
+                    metadata: ctx.accounts.badge_metadata.to_account_info(),
+                    collection_authority: ctx.accounts.collection_authority.to_account_info(),
+                    payer: ctx.accounts.authority.to_account_info(),
+                    update_authority: ctx.accounts.collection_authority.to_account_info(),
+                    collection_mint: ctx.accounts.collection_mint.to_account_info(),
+                    collection_metadata: ctx.accounts.collection_metadata.to_account_info(),
+                    collection_master_edition: ctx
+                        .accounts
+                        .collection_master_edition
+                        .to_account_info(),
+                },
+                col_signer,
+            ),
+            None,
+        )?;
+
+        // 4) congela o supply em 1: ninguém minta cópias do badge
+        token::set_authority(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                SetAuthority {
+                    current_authority: ctx.accounts.collection_authority.to_account_info(),
+                    account_or_mint: ctx.accounts.badge_mint.to_account_info(),
+                },
+                col_signer,
+            ),
+            token::spl_token::instruction::AuthorityType::MintTokens,
+            None,
+        )?;
+
+        emit!(BadgeMinted {
+            game_id,
+            badge_mint: ctx.accounts.badge_mint.key(),
+            recipient: ctx.accounts.recipient.key(),
+        });
+        Ok(())
+    }
 }
 
 /// Saldo do vault descontando o buffer de rent, que nunca é distribuído.
@@ -728,6 +906,35 @@ pub struct CreateGameCollection<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(game_id: u8)]
+pub struct UpdateGameCollection<'info> {
+    #[account(seeds = [b"config"], bump = config.bump, has_one = authority)]
+    pub config: Account<'info, Config>,
+    pub authority: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [b"game_collection".as_ref(), &[game_id]],
+        bump = game_collection.bump,
+    )]
+    pub game_collection: Box<Account<'info, GameCollection>>,
+    /// Mint da coleção — amarra a metadata abaixo à coleção deste jogo.
+    #[account(address = game_collection.collection_mint @ BetError::GameMismatch)]
+    pub collection_mint: Box<Account<'info, Mint>>,
+    /// CHECK: metadata da coleção; PDA validada por seeds contra o mint do jogo.
+    #[account(
+        mut,
+        seeds = [b"metadata", token_metadata_program.key().as_ref(), collection_mint.key().as_ref()],
+        seeds::program = token_metadata_program.key(),
+        bump
+    )]
+    pub collection_metadata: UncheckedAccount<'info>,
+    /// CHECK: PDA update authority da coleção; validada por seeds.
+    #[account(seeds = [b"collection_authority"], bump = game_collection.collection_authority_bump)]
+    pub collection_authority: UncheckedAccount<'info>,
+    pub token_metadata_program: Program<'info, Metadata>,
+}
+
+#[derive(Accounts)]
 #[instruction(market_id: u64)]
 pub struct CreateMarket<'info> {
     #[account(seeds = [b"config"], bump = config.bump, has_one = authority)]
@@ -767,11 +974,14 @@ pub struct UpdateConfig<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(outcome: u8, amount: u64, game_id: u8)]
 pub struct PlaceBet<'info> {
+    // Box nas contas deserializadas: o frame do try_accounts fica acima do
+    // limite de 4096 bytes da VM sem isso (UB silencioso em runtime).
     #[account(seeds = [b"config"], bump = config.bump)]
-    pub config: Account<'info, Config>,
+    pub config: Box<Account<'info, Config>>,
     #[account(mut, seeds = [b"market", market.market_id.to_le_bytes().as_ref()], bump = market.bump)]
-    pub market: Account<'info, Market>,
+    pub market: Box<Account<'info, Market>>,
     #[account(mut, seeds = [b"vault", market.key().as_ref()], bump = market.vault_bump)]
     pub vault: SystemAccount<'info>,
     /// CHECK: validado contra a config.
@@ -784,7 +994,7 @@ pub struct PlaceBet<'info> {
         seeds = [b"bet", market.key().as_ref(), ticket_mint.key().as_ref()],
         bump
     )]
-    pub bet: Account<'info, Bet>,
+    pub bet: Box<Account<'info, Bet>>,
     /// Ticket-NFT da aposta: mint novo (keypair do cliente), decimals 0, autoridade = market.
     #[account(
         init,
@@ -792,33 +1002,33 @@ pub struct PlaceBet<'info> {
         mint::decimals = 0,
         mint::authority = market,
     )]
-    pub ticket_mint: Account<'info, Mint>,
+    pub ticket_mint: Box<Account<'info, Mint>>,
     #[account(
         init,
         payer = bettor,
         token::mint = ticket_mint,
         token::authority = bettor,
     )]
-    pub ticket_account: Account<'info, TokenAccount>,
+    pub ticket_account: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     pub bettor: Signer<'info>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
 
-    // --- Identidade do jogo (opcionais): presentes quando market.game_id != GAME_NONE ---
-    /// Registro da coleção do jogo do mercado (define nome/arte do ticket).
+    // --- Identidade do jogo (opcionais): presentes quando o game_id da aposta != GAME_NONE ---
+    /// Registro da coleção do jogo declarado na aposta (define nome/arte do ticket).
     #[account(
-        seeds = [b"game_collection".as_ref(), &[market.game_id]],
+        seeds = [b"game_collection".as_ref(), &[game_id]],
         bump = game_collection.bump,
     )]
-    pub game_collection: Option<Account<'info, GameCollection>>,
+    pub game_collection: Option<Box<Account<'info, GameCollection>>>,
     /// CHECK: metadata do ticket; o Token Metadata valida a derivação da PDA no CPI.
     #[account(mut)]
     pub ticket_metadata: Option<UncheckedAccount<'info>>,
     /// Mint da coleção do jogo (checado contra game_collection.collection_mint no handler).
     #[account(mut)]
-    pub collection_mint: Option<Account<'info, Mint>>,
+    pub collection_mint: Option<Box<Account<'info, Mint>>>,
     /// CHECK: metadata da coleção; validada pelo Token Metadata no CPI (size cresce).
     #[account(mut)]
     pub collection_metadata: Option<UncheckedAccount<'info>>,
@@ -828,6 +1038,56 @@ pub struct PlaceBet<'info> {
     #[account(seeds = [b"collection_authority"], bump)]
     pub collection_authority: Option<UncheckedAccount<'info>>,
     pub token_metadata_program: Option<Program<'info, Metadata>>,
+}
+
+#[derive(Accounts)]
+#[instruction(game_id: u8)]
+pub struct MintGameBadge<'info> {
+    #[account(seeds = [b"config"], bump = config.bump, has_one = authority)]
+    pub config: Account<'info, Config>,
+    /// Backend do jogo: autoriza a emissão e paga o rent do badge.
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    /// CHECK: wallet do jogador que recebe o badge; apenas dona da token account.
+    pub recipient: UncheckedAccount<'info>,
+    #[account(
+        seeds = [b"game_collection".as_ref(), &[game_id]],
+        bump = game_collection.bump,
+    )]
+    pub game_collection: Box<Account<'info, GameCollection>>,
+    /// Badge-NFT do jogador: mint novo (keypair) a cada emissão — cada badge é
+    /// um NFT único (supply 1 por mint); a coleção do jogo não tem limite.
+    #[account(
+        init,
+        payer = authority,
+        mint::decimals = 0,
+        mint::authority = collection_authority,
+    )]
+    pub badge_mint: Box<Account<'info, Mint>>,
+    #[account(
+        init,
+        payer = authority,
+        token::mint = badge_mint,
+        token::authority = recipient,
+    )]
+    pub badge_account: Box<Account<'info, TokenAccount>>,
+    /// CHECK: metadata do badge; o Token Metadata valida a derivação da PDA no CPI.
+    #[account(mut)]
+    pub badge_metadata: UncheckedAccount<'info>,
+    #[account(mut, address = game_collection.collection_mint @ BetError::GameMismatch)]
+    pub collection_mint: Box<Account<'info, Mint>>,
+    /// CHECK: metadata da coleção; validada pelo Token Metadata no CPI (size cresce).
+    #[account(mut)]
+    pub collection_metadata: UncheckedAccount<'info>,
+    /// CHECK: master edition da coleção; validada pelo Token Metadata no CPI.
+    pub collection_master_edition: UncheckedAccount<'info>,
+    /// CHECK: PDA mint/update authority da coleção; validada por seeds.
+    #[account(seeds = [b"collection_authority"], bump = game_collection.collection_authority_bump)]
+    pub collection_authority: UncheckedAccount<'info>,
+    pub token_metadata_program: Program<'info, Metadata>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -916,8 +1176,11 @@ pub enum MarketState {
 pub struct Market {
     pub market_id: u64,
     pub fixture_id: u64,
-    /// Jogo do mercado: define a coleção-identidade dos tickets. GAME_NONE = sem coleção.
+    /// Jogo principal do mercado (rótulo/fallback). GAME_NONE = sem coleção.
     pub game_id: u8,
+    /// Bitmask dos jogos habilitados a apostar aqui (bit N = game_id N); cada
+    /// aposta declara seu jogo no place_bet e entra na coleção correspondente.
+    pub allowed_games: u8,
     pub kind: MarketKind,
     pub state: MarketState,
     pub outcome_count: u8,
@@ -962,6 +1225,8 @@ pub struct Bet {
     pub market: Pubkey,
     pub ticket_mint: Pubkey,
     pub outcome: u8,
+    /// Jogo declarado na aposta (coleção do ticket). GAME_NONE = sem coleção.
+    pub game_id: u8,
     /// Stake líquido (após taxa) que entrou no vault.
     pub stake_net: u64,
     /// Payout travado na entrada (só HouseBacked).
@@ -980,8 +1245,16 @@ pub struct BetPlaced {
     pub ticket_mint: Pubkey,
     pub bettor: Pubkey,
     pub outcome: u8,
+    pub game_id: u8,
     pub amount: u64,
     pub net: u64,
+}
+
+#[event]
+pub struct BadgeMinted {
+    pub game_id: u8,
+    pub badge_mint: Pubkey,
+    pub recipient: Pubkey,
 }
 
 #[event]
@@ -1043,4 +1316,6 @@ pub enum BetError {
     MissingGameCollection,
     #[msg("Coleção não corresponde ao jogo do mercado")]
     GameMismatch,
+    #[msg("Jogo não habilitado neste mercado")]
+    GameNotAllowed,
 }

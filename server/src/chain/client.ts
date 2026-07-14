@@ -1,7 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program } from "@coral-xyz/anchor";
+import { Program } from "@coral-xyz/anchor";
+// bn.js direto: o dist CJS do anchor não expõe BN como named export em Node ESM
+import BN from "bn.js";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 
 // O programa oddies-bet vive na devnet independente da rede da TxLINE.
@@ -164,6 +166,27 @@ export const gameCollectionPda = (gameId: number) =>
 export const collectionAuthorityPda = () =>
   PublicKey.findProgramAddressSync([Buffer.from("collection_authority")], PROGRAM_ID)[0];
 
+/** Bitmask de jogos habilitados num mercado (bit N = game_id N). */
+export const gameMask = (...ids: number[]) =>
+  ids.reduce((m, id) => (id === GAME_NONE ? m : m | (1 << id)), 0);
+
+/**
+ * Par (game_id principal, allowed_games) pronto pro create_market. Degrada pra
+ * (GAME_NONE, 0) enquanto a coleção do jogo principal não existe on-chain —
+ * mesma regra do gameIdOrNone, estendida ao mask (o contrato exige mask 0
+ * quando o game_id é GAME_NONE).
+ */
+export async function marketGames(
+  program: Program,
+  primary: number,
+  ...extras: number[]
+): Promise<{ gameId: number; allowedGames: number }> {
+  if (primary === GAME_NONE) return { gameId: GAME_NONE, allowedGames: 0 };
+  const gameId = await gameIdOrNone(program, primary);
+  if (gameId === GAME_NONE) return { gameId: GAME_NONE, allowedGames: 0 };
+  return { gameId, allowedGames: gameMask(gameId, ...extras) };
+}
+
 const collectionReadyCache = new Map<number, boolean>();
 /**
  * Retorna `gameId` se a coleção desse jogo já existe on-chain, senão GAME_NONE.
@@ -194,8 +217,17 @@ export async function collectionAccounts(
   gameId: number,
   ticketMint: PublicKey
 ) {
-  // contas opcionais: omitidas quando não há coleção (place_bet as ignora)
-  const none: Record<string, PublicKey> = {};
+  // contas opcionais: `null` explícito quando não há coleção — o client TS do
+  // Anchor exige o valor (vira placeholder on-chain), não aceita omissão
+  const none: Record<string, PublicKey | null> = {
+    gameCollection: null,
+    ticketMetadata: null,
+    collectionMint: null,
+    collectionMetadata: null,
+    collectionMasterEdition: null,
+    collectionAuthority: null,
+    tokenMetadataProgram: null,
+  };
   if (gameId === GAME_NONE || gameId == null) return none;
   const gc = gameCollectionPda(gameId);
   const gcAcc: any = await (program.account as any).gameCollection

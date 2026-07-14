@@ -3,7 +3,7 @@ import Navbar from "./Navbar";
 import { useLang } from "./i18n";
 import { LoginPanel, useAccount, useAccountCta } from "./chain/account";
 import { api } from "./chain/http";
-import { formatSol } from "./chain/oddies";
+import { GAME, formatSol } from "./chain/oddies";
 import HowTo from "./components/HowTo";
 import { celebrateCorrect } from "./celebration";
 import { playSfx } from "./sfx";
@@ -103,7 +103,9 @@ export default function Survivor() {
     setError("");
     try {
       // 1) aposta real no mercado 1X2 (ticket-NFT na carteira)
-      await account.placeBet(m.marketId, outcome, Math.round(stakeSol * 1e9));
+      // o mercado 1X2 é compartilhado com o Guess the Team; declarar o jogo aqui
+      // faz o ticket-NFT entrar na coleção do Survivor
+      await account.placeBet(m.marketId, outcome, Math.round(stakeSol * 1e9), GAME.survivor);
       // 2) registra o pick da temporada — a wallet vem da sessão autenticada
       await api(
         "/api/survivor/pick",

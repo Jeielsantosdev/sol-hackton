@@ -1,8 +1,11 @@
 import crypto from "node:crypto";
-import { BN } from "@coral-xyz/anchor";
+// bn.js direto: o dist CJS do anchor não expõe BN como named export em Node ESM
+import BN from "bn.js";
 import { SystemProgram } from "@solana/web3.js";
-import { GAME, configPda, gameIdOrNone, getChain, marketPda, vaultPda } from "../chain/client.js";
+import { GAME, configPda, gameIdOrNone,
+  marketGames, getChain, marketPda, vaultPda } from "../chain/client.js";
 import { JsonFileStore } from "../store/jsonFile.js";
+import { HttpError } from "../http/errors.js";
 import { addPoints } from "./leaderboard.js";
 import { getGameData } from "./matches.js";
 
@@ -100,6 +103,7 @@ async function createBucketMarket(
   try {
     const marketId = new BN(Date.now()).muln(1000).addn(crypto.randomInt(1000));
     const market = marketPda(marketId);
+    const games = await marketGames(chain.program, GAME.stats);
     await chain.program.methods
       .createMarket(
         marketId,
@@ -109,7 +113,8 @@ async function createBucketMarket(
         Array(8).fill(new BN(0)),
         new BN(closeTs),
         new BN(resolveAfterTs),
-        await gameIdOrNone(chain.program, GAME.stats)
+        games.gameId,
+        games.allowedGames
       )
       .accounts({
         config: configPda(),
@@ -281,15 +286,15 @@ export async function submitPrediction(
   name?: string
 ) {
   await syncStatsGame();
-  if (!wallet || typeof wallet !== "string") throw new Error("wallet obrigatória");
-  if (!validGuess(guess)) throw new Error("palpite fora dos limites");
+  if (!wallet || typeof wallet !== "string") throw new HttpError(400, "wallet obrigatória");
+  if (!validGuess(guess)) throw new HttpError(400, "palpite fora dos limites");
   const data = store.load();
   const match = data.matches.find((m) => m.id === matchId);
   const now = Math.floor(Date.now() / 1000);
-  if (!match || match.settled) throw new Error("partida não encontrada");
-  if (now >= match.locksAt) throw new Error("palpites encerrados para essa partida");
+  if (!match || match.settled) throw new HttpError(404, "partida não encontrada");
+  if (now >= match.locksAt) throw new HttpError(409, "palpites encerrados para essa partida");
   if (data.predictions.some((p) => p.matchId === matchId && p.wallet === wallet)) {
-    throw new Error("você já palpitou nessa partida");
+    throw new HttpError(409, "você já palpitou nessa partida");
   }
   const record: PredictionRecord = {
     id: crypto.randomUUID(),

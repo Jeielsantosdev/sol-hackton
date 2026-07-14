@@ -13,7 +13,7 @@ custodialRoutes.post(
   "/place-bet",
   asyncHandler(async (req, res) => {
     const { user } = req as AuthedRequest;
-    const { marketId, outcome, lamports } = req.body ?? {};
+    const { marketId, outcome, lamports, gameId } = req.body ?? {};
     if (
       typeof marketId !== "string" ||
       !Number.isInteger(outcome) ||
@@ -22,13 +22,14 @@ custodialRoutes.post(
     ) {
       throw new HttpError(400, "marketId, outcome e lamports (inteiro > 0) obrigatórios");
     }
-    try {
-      res.json(await custodialPlaceBet(userKeypair(user), marketId, outcome, lamports));
-    } catch (err) {
-      if (err instanceof HttpError) throw err;
-      throw new HttpError(400, (err as Error).message);
+    // gameId opcional: qual jogo o usuário está jogando (define a coleção do
+    // ticket); sem ele vale o jogo principal do mercado. O contrato valida
+    // contra o allowed_games do mercado.
+    if (gameId !== undefined && (!Number.isInteger(gameId) || gameId < 0 || gameId > 255)) {
+      throw new HttpError(400, "gameId deve ser um inteiro (0-255)");
     }
-  })
+    res.json(await custodialPlaceBet(userKeypair(user), marketId, outcome, lamports, gameId));
+  }),
 );
 
 custodialRoutes.post(
@@ -39,13 +40,8 @@ custodialRoutes.post(
     if (![market, ticketMint, ticketAccount].every((v) => typeof v === "string" && v)) {
       throw new HttpError(400, "market, ticketMint e ticketAccount obrigatórios");
     }
-    try {
-      res.json({
-        signature: await custodialClaim(userKeypair(user), market, ticketMint, ticketAccount),
-      });
-    } catch (err) {
-      if (err instanceof HttpError) throw err;
-      throw new HttpError(400, (err as Error).message);
-    }
-  })
+    res.json({
+      signature: await custodialClaim(userKeypair(user), market, ticketMint, ticketAccount),
+    });
+  }),
 );

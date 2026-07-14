@@ -42,20 +42,10 @@ runsRoutes.post(
     if (!Number.isInteger(stakeLamports) || stakeLamports <= 0) {
       throw new HttpError(400, "stakeLamports deve ser um inteiro positivo");
     }
-    try {
-      res.json(
-        await createRun(
-          user,
-          target,
-          stakeLamports,
-          mode === "infinite" ? "infinite" : "target"
-        )
-      );
-    } catch (err) {
-      if (err instanceof HttpError) throw err;
-      throw new HttpError(400, (err as Error).message);
-    }
-  })
+    res.json(
+      await createRun(user, target, stakeLamports, mode === "infinite" ? "infinite" : "target"),
+    );
+  }),
 );
 
 runsRoutes.get(
@@ -67,7 +57,7 @@ runsRoutes.get(
       throw new HttpError(403, "só é possível listar as próprias runs");
     }
     res.json({ runs: listRunsByWallet(req.params.wallet) });
-  })
+  }),
 );
 
 runsRoutes.get(
@@ -79,7 +69,7 @@ runsRoutes.get(
     if (!run) throw new HttpError(404, "run não encontrada");
     assertRunOwner(run, user);
     res.json(runView(run));
-  })
+  }),
 );
 
 runsRoutes.post(
@@ -92,13 +82,8 @@ runsRoutes.post(
     if (dir !== "higher" && dir !== "lower") {
       throw new HttpError(400, "dir deve ser higher|lower");
     }
-    try {
-      res.json(await guessRun(req.params.id, dir, user));
-    } catch (err) {
-      if (err instanceof HttpError) throw err;
-      throw new HttpError(400, (err as Error).message);
-    }
-  })
+    res.json(await guessRun(req.params.id, dir, user));
+  }),
 );
 
 runsRoutes.post(
@@ -107,11 +92,6 @@ runsRoutes.post(
   requireSession,
   asyncHandler(async (req, res) => {
     const { user } = req as AuthedRequest;
-    try {
-      res.json(await cashoutRun(req.params.id, user));
-    } catch (err) {
-      if (err instanceof HttpError) throw err;
-      throw new HttpError(400, (err as Error).message);
-    }
-  })
+    res.json(await cashoutRun(req.params.id, user));
+  }),
 );

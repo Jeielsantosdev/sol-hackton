@@ -1,10 +1,5 @@
 import { Router } from "express";
-import {
-  answerEvent,
-  arcadeLeaderboard,
-  nextEvent,
-  type ArcadeGame,
-} from "../../games/arcade.js";
+import { answerEvent, arcadeLeaderboard, nextEvent, type ArcadeGame } from "../../games/arcade.js";
 import {
   PENALTY_ODDS_BPS,
   SHOTS_PER_SESSION,
@@ -35,22 +30,14 @@ arcadeRoutes.post(
   asyncHandler(async (req, res) => {
     const game = gameParam(req.params.game);
     const { wallet } = req.body ?? {};
-    try {
-      res.json(await nextEvent(game, wallet));
-    } catch (err) {
-      throw new HttpError(400, (err as Error).message);
-    }
-  })
+    res.json(await nextEvent(game, wallet));
+  }),
 );
 
 arcadeRoutes.post("/:game/answer/:id", (req, res) => {
   gameParam(req.params.game);
   const { choice, name } = req.body ?? {};
-  try {
-    res.json(answerEvent(req.params.id, Number(choice), name));
-  } catch (err) {
-    throw new HttpError(400, (err as Error).message);
-  }
+  res.json(answerEvent(req.params.id, Number(choice), name));
 });
 
 arcadeRoutes.get("/:game/leaderboard", (req, res) => {
@@ -80,13 +67,8 @@ arcadeRoutes.post(
     if (!Number.isInteger(stakeLamports) || stakeLamports <= 0) {
       throw new HttpError(400, "stakeLamports deve ser um inteiro positivo");
     }
-    try {
-      res.json(await createSession(user, target, stakeLamports));
-    } catch (err) {
-      if (err instanceof HttpError) throw err;
-      throw new HttpError(400, (err as Error).message);
-    }
-  })
+    res.json(await createSession(user, target, stakeLamports));
+  }),
 );
 
 arcadeRoutes.get(
@@ -98,7 +80,7 @@ arcadeRoutes.get(
       throw new HttpError(403, "só é possível listar as próprias sessões");
     }
     res.json({ sessions: listSessionsByWallet(req.params.wallet) });
-  })
+  }),
 );
 
 arcadeRoutes.get(
@@ -110,7 +92,7 @@ arcadeRoutes.get(
     if (!s) throw new HttpError(404, "sessão não encontrada");
     assertSessionOwner(s, user);
     res.json(sessionView(s));
-  })
+  }),
 );
 
 arcadeRoutes.post(
@@ -119,13 +101,8 @@ arcadeRoutes.post(
   requireSession,
   asyncHandler(async (req, res) => {
     const { user } = req as AuthedRequest;
-    try {
-      res.json(await nextShot(req.params.id, user));
-    } catch (err) {
-      if (err instanceof HttpError) throw err;
-      throw new HttpError(400, (err as Error).message);
-    }
-  })
+    res.json(await nextShot(req.params.id, user));
+  }),
 );
 
 arcadeRoutes.post(
@@ -134,11 +111,6 @@ arcadeRoutes.post(
   asyncHandler(async (req, res) => {
     const { user } = req as AuthedRequest;
     const { choice, name } = req.body ?? {};
-    try {
-      res.json(answerShot(req.params.id, Number(choice), user, name));
-    } catch (err) {
-      if (err instanceof HttpError) throw err;
-      throw new HttpError(400, (err as Error).message);
-    }
-  })
+    res.json(answerShot(req.params.id, Number(choice), user, name));
+  }),
 );

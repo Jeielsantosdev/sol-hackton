@@ -101,7 +101,8 @@ describe("oddies-bet :: fuzzing", function () {
         opts.oddsBps ?? zeroOdds(),
         new BN(closeTs),
         new BN(resolveAfterTs),
-        255 // GAME_NONE: fuzz não exercita coleção
+        255, // GAME_NONE: fuzz não exercita coleção
+        0
       )
       .accounts({
         config: configPda,
@@ -124,7 +125,7 @@ describe("oddies-bet :: fuzzing", function () {
     const ticketMint = Keypair.generate();
     const ticketAccount = Keypair.generate();
     await program.methods
-      .placeBet(outcome, new BN(amount))
+      .placeBet(outcome, new BN(amount), 255 /* GAME_NONE */)
       .accounts({
         config: configPda,
         market,
@@ -240,7 +241,8 @@ describe("oddies-bet :: fuzzing", function () {
             zeroOdds(),
             new BN(now + 100),
             new BN(now + 100), // igual, não maior
-            255
+            255,
+            0
           )
           .accounts({
             config: configPda,

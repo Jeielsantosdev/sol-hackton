@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { addPoints, topBoard, type LeaderGame } from "./leaderboard.js";
 import { getGameData } from "./matches.js";
+import { HttpError } from "../http/errors.js";
 
 /**
  * Motor arcade dos mercados relâmpago (Fases 4/5): Penalty Predictor e Live
@@ -72,7 +73,7 @@ function publicView(ev: ArcadeEvent) {
 }
 
 export async function nextEvent(game: ArcadeGame, wallet: string) {
-  if (!wallet) throw new Error("wallet obrigatória");
+  if (!wallet) throw new HttpError(400, "wallet obrigatória");
   prune();
   const matches = (await getGameData()).matches;
   const m = matches[crypto.randomInt(matches.length)];
@@ -118,7 +119,7 @@ export async function nextEvent(game: ArcadeGame, wallet: string) {
 
 export function answerEvent(id: string, choice: number, name?: string) {
   const ev = events.get(id);
-  if (!ev || ev.answered) throw new Error("evento não encontrado (ou já respondido)");
+  if (!ev || ev.answered) throw new HttpError(404, "evento não encontrado (ou já respondido)");
   ev.answered = true;
 
   const key = `${ev.game}:${ev.wallet}`;

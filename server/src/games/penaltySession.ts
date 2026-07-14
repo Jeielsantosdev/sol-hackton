@@ -97,7 +97,7 @@ export function assertSessionOwner(s: SessionRecord, user: UserRecord) {
 }
 
 export async function createSession(user: UserRecord, target: number, stakeLamports: number) {
-  if (!getChain()) throw new Error("on-chain desativado no server (authority ausente)");
+  if (!getChain()) throw new HttpError(503, "on-chain desativado no server (authority ausente)");
   // wallet vem da sessão autenticada — ninguém abre sessão em nome de terceiros
   const wallet = userAddress(user);
   try {
@@ -107,10 +107,10 @@ export async function createSession(user: UserRecord, target: number, stakeLampo
   }
   const oddsBps = PENALTY_ODDS_BPS[target];
   if (!oddsBps) {
-    throw new Error(`meta inválida: escolha entre ${Object.keys(PENALTY_ODDS_BPS).join(", ")}`);
+    throw new HttpError(400, `meta inválida: escolha entre ${Object.keys(PENALTY_ODDS_BPS).join(", ")}`);
   }
   if (!Number.isInteger(stakeLamports) || stakeLamports < 1_000_000) {
-    throw new Error("stake mínimo: 1000000 lamports");
+    throw new HttpError(400, "stake mínimo: 1000000 lamports");
   }
 
   const s = store.load();
@@ -122,11 +122,11 @@ export async function createSession(user: UserRecord, target: number, stakeLampo
         (x.status === "playing" || (x.status === "awaiting_bet" && nowS <= x.closeTs))
     )
   ) {
-    throw new Error("você já tem uma sessão ativa — termine-a antes de abrir outra");
+    throw new HttpError(409, "você já tem uma sessão ativa — termine-a antes de abrir outra");
   }
   // anti-drain: criar+fundear custa SOL da authority
   if (s.sessions.filter((x) => Date.now() - x.createdAt < 5 * 60 * 1000).length >= 10) {
-    throw new Error("limite de novas sessões atingido — tente em alguns minutos");
+    throw new HttpError(429, "limite de novas sessões atingido — tente em alguns minutos");
   }
 
   const market = await createHouseMarket(oddsBps, stakeLamports, BET_WINDOW_S, GAME.penalty);
@@ -189,12 +189,12 @@ export async function nextShot(id: string, user: UserRecord) {
   assertSessionOwner(s, user);
   if (s.status === "awaiting_bet") {
     if (!(await houseBetArrived(s.marketId, s.netLamports))) {
-      throw new Error("aposta ainda não confirmada on-chain — assine o place_bet primeiro");
+      throw new HttpError(400, "aposta ainda não confirmada on-chain — assine o place_bet primeiro");
     }
     s.status = "playing";
     store.save();
   }
-  if (s.status !== "playing") throw new Error(`sessão encerrada (${s.status})`);
+  if (s.status !== "playing") throw new HttpError(409, `sessão encerrada (${s.status})`);
 
   // pênalti abandonado (página fechou no meio): conta como erro e segue
   if (s.currentEventId) {
@@ -220,7 +220,7 @@ export function answerShot(id: string, choice: number, user: UserRecord, name?: 
   if (!s) throw new HttpError(404, "sessão não encontrada");
   assertSessionOwner(s, user);
   if (s.status !== "playing" || !s.currentEventId) {
-    throw new Error("nenhum pênalti em aberto nessa sessão");
+    throw new HttpError(409, "nenhum pênalti em aberto nessa sessão");
   }
   let result: ReturnType<typeof answerEvent>;
   try {

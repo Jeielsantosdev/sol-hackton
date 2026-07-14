@@ -74,13 +74,14 @@ describe("oddies-bet", () => {
     marketId: BN,
     bettor: Keypair,
     outcome: number,
-    amount: number
+    amount: number,
+    gameId: number = GAME_NONE
   ): Promise<{ ticketMint: Keypair; ticketAccount: Keypair }> {
     const market = marketPda(marketId);
     const ticketMint = Keypair.generate();
     const ticketAccount = Keypair.generate();
     await program.methods
-      .placeBet(outcome, new BN(amount))
+      .placeBet(outcome, new BN(amount), gameId)
       .accounts({
         config: configPda,
         market,
@@ -142,7 +143,8 @@ describe("oddies-bet", () => {
         oddsBps,
         new BN(closeTs),
         new BN(resolveAfterTs),
-        gameId
+        gameId,
+        gameId === GAME_NONE ? 0 : 1 << gameId
       )
       .accounts({
         config: configPda,
@@ -583,6 +585,128 @@ describe("oddies-bet", () => {
       const after = await balance(bettor2.publicKey);
       // Recupera os 90% líquidos (a taxa de 10% não volta).
       assert.approximately(after - before, 0.9 * SOL, 0.01 * SOL);
+    });
+  });
+
+  describe("identidade por jogo (allowed_games)", () => {
+    // marketId 4: parimutuel de fixture com jogos {0 (hilo), 3 (survivor)} habilitados
+    const marketId = new BN(4);
+    const GAME_HILO = 0;
+    const GAME_PENALTY = 2;
+    const GAME_SURVIVOR = 3;
+
+    it("rejeita create_market com o jogo principal fora do allowed_games", async () => {
+      const now = Math.floor(Date.now() / 1000);
+      try {
+        await program.methods
+          .createMarket(
+            new BN(400),
+            new BN(1001),
+            { parimutuel: {} },
+            3,
+            zeroOdds(),
+            new BN(now + 3600),
+            new BN(now + 7200),
+            GAME_HILO,
+            0 // mask vazio: o bit do jogo principal precisa estar ligado
+          )
+          .accounts({
+            config: configPda,
+            market: marketPda(new BN(400)),
+            vault: vaultPda(marketPda(new BN(400))),
+            authority: authority.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+        assert.fail("deveria ter falhado");
+      } catch (e: any) {
+        assert.include(e.toString(), "InvalidGameId");
+      }
+    });
+
+    it("rejeita create_market GAME_NONE com allowed_games não-zero", async () => {
+      const now = Math.floor(Date.now() / 1000);
+      try {
+        await program.methods
+          .createMarket(
+            new BN(401),
+            new BN(1001),
+            { parimutuel: {} },
+            3,
+            zeroOdds(),
+            new BN(now + 3600),
+            new BN(now + 7200),
+            GAME_NONE,
+            1 << GAME_HILO
+          )
+          .accounts({
+            config: configPda,
+            market: marketPda(new BN(401)),
+            vault: vaultPda(marketPda(new BN(401))),
+            authority: authority.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc();
+        assert.fail("deveria ter falhado");
+      } catch (e: any) {
+        assert.include(e.toString(), "InvalidGameId");
+      }
+    });
+
+    it("aceita apostas dos jogos habilitados e rejeita jogo fora do mask", async () => {
+      const now = Math.floor(Date.now() / 1000);
+      await program.methods
+        .createMarket(
+          marketId,
+          new BN(1001),
+          { parimutuel: {} },
+          3,
+          zeroOdds(),
+          new BN(now + 3600),
+          new BN(now + 7200),
+          GAME_HILO,
+          (1 << GAME_HILO) | (1 << GAME_SURVIVOR)
+        )
+        .accounts({
+          config: configPda,
+          market: marketPda(marketId),
+          vault: vaultPda(marketPda(marketId)),
+          authority: authority.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+
+      const acc: any = await (program.account as any).market.fetch(marketPda(marketId));
+      assert.equal(acc.allowedGames, (1 << GAME_HILO) | (1 << GAME_SURVIVOR));
+
+      // GAME_NONE sempre passa (ticket sem coleção)
+      await placeBet(marketId, bettor1, 0, 0.5 * SOL, GAME_NONE);
+
+      // jogo fora do mask → GameNotAllowed (validado antes das contas de coleção)
+      try {
+        await placeBet(marketId, bettor2, 1, 0.5 * SOL, GAME_PENALTY);
+        assert.fail("deveria ter falhado");
+      } catch (e: any) {
+        assert.include(e.toString(), "GameNotAllowed");
+      }
+
+      // jogo habilitado mas sem as contas de coleção → MissingGameCollection
+      // (no validador local não há Metaplex; o caminho feliz com coleção é
+      // coberto na devnet pelo script verify-collections)
+      try {
+        await placeBet(marketId, bettor2, 1, 0.5 * SOL, GAME_SURVIVOR);
+        assert.fail("deveria ter falhado");
+      } catch (e: any) {
+        assert.include(e.toString(), "MissingGameCollection");
+      }
+
+      // o game_id declarado fica gravado na Bet
+      const bets = await (program.account as any).bet.all();
+      const noneBet = bets.find(
+        (b: any) =>
+          b.account.market.equals(marketPda(marketId)) && b.account.gameId === GAME_NONE
+      );
+      assert.ok(noneBet, "aposta GAME_NONE registrada com game_id na Bet");
     });
   });
 

@@ -1,4 +1,6 @@
-import { BN } from "@coral-xyz/anchor";
+// bn.js direto: o dist CJS do anchor não expõe BN como named export em Node ESM
+import BN from "bn.js";
+import bs58 from "bs58";
 import { PublicKey } from "@solana/web3.js";
 import {
   BPS,
@@ -50,12 +52,34 @@ export async function listTickets(wallet: string): Promise<TicketView[]> {
     throw new HttpError(400, "wallet inválida");
   }
 
-  const [tokenAccounts, allBets] = await Promise.all([
+  // Decodifica as Bets uma a uma: contas de layout pré-migração (sem o campo
+  // game_id) não derrubam a listagem inteira — são só ignoradas.
+  // (o Anchor camelCasa os nomes de conta do IDL em runtime: "Bet" → "bet")
+  const betDiscriminator: number[] = (chain.program.idl as any).accounts.find(
+    (a: any) => a.name.toLowerCase() === "bet"
+  ).discriminator;
+  const [tokenAccounts, rawBets] = await Promise.all([
     chain.connection.getParsedTokenAccountsByOwner(owner, {
       programId: TOKEN_PROGRAM_ID,
     }),
-    (chain.program.account as any).bet.all(),
+    chain.connection.getProgramAccounts(chain.program.programId, {
+      filters: [
+        { memcmp: { offset: 0, bytes: bs58.encode(Buffer.from(betDiscriminator)) } },
+      ],
+    }),
   ]);
+  const allBets = rawBets.flatMap(({ pubkey, account }) => {
+    try {
+      return [
+        {
+          publicKey: pubkey,
+          account: chain.program.coder.accounts.decode("bet", account.data),
+        },
+      ];
+    } catch {
+      return [];
+    }
+  });
 
   const heldMints = new Map<string, string>(); // mint → token account
   for (const { pubkey, account } of tokenAccounts.value) {

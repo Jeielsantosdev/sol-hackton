@@ -6,7 +6,7 @@ import {
   survivorStatus,
 } from "../../games/survivor.js";
 import { userAddress } from "../../auth/store.js";
-import { HttpError, asyncHandler } from "../errors.js";
+import { asyncHandler } from "../errors.js";
 import { requireSession, type AuthedRequest } from "../middleware.js";
 
 export const survivorRoutes = Router();
@@ -15,7 +15,7 @@ survivorRoutes.get(
   "/markets",
   asyncHandler(async (_req, res) => {
     res.json({ markets: await listPickableMarkets() });
-  })
+  }),
 );
 
 survivorRoutes.post(
@@ -26,13 +26,8 @@ survivorRoutes.post(
     const { marketId, outcome, name } = req.body ?? {};
     // wallet vem da sessão autenticada — impede forjar/bloquear pick de terceiros
     const wallet = userAddress(user);
-    try {
-      res.json(await makePick(wallet, String(marketId ?? ""), Number(outcome), name));
-    } catch (err) {
-      if (err instanceof HttpError) throw err;
-      throw new HttpError(400, (err as Error).message);
-    }
-  })
+    res.json(await makePick(wallet, String(marketId ?? ""), Number(outcome), name));
+  }),
 );
 
 survivorRoutes.get("/status/:wallet", (req, res) => {

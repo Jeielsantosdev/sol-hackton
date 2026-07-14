@@ -11,7 +11,8 @@
  * Rodar após o deploy do programa e do create:collections:
  *   npm run verify:collections
  */
-import { BN } from "@coral-xyz/anchor";
+// bn.js direto: o dist CJS do anchor não expõe BN como named export em Node ESM
+import BN from "bn.js";
 import {
   ComputeBudgetProgram,
   Keypair,
@@ -70,7 +71,7 @@ async function main() {
   odds[0] = new BN(20_000); // 2x
   odds[1] = new BN(10_001);
   await program.methods
-    .createMarket(marketId, marketId, { houseBacked: {} }, 2, odds, new BN(now + 300), new BN(now + 301), gameId)
+    .createMarket(marketId, marketId, { houseBacked: {} }, 2, odds, new BN(now + 300), new BN(now + 301), gameId, 1 << gameId)
     .accountsPartial({
       config: configPda(), market, vault,
       authority: authority.publicKey, systemProgram: SystemProgram.programId,
@@ -90,9 +91,9 @@ async function main() {
   const ticketMint = Keypair.generate();
   const ticketAccount = Keypair.generate();
   const collection = await collectionAccounts(program, gameId, ticketMint.publicKey);
-  check("collectionAccounts montou as contas (não vazio)", Object.keys(collection).length > 0);
+  check("collectionAccounts montou as contas da coleção", Boolean(collection.gameCollection));
   await program.methods
-    .placeBet(0, new BN(stake))
+    .placeBet(0, new BN(stake), gameId)
     .accountsPartial({
       config: configPda(), market, vault,
       teamWallet: (await (program.account as any).config.fetch(configPda())).teamWallet,
@@ -126,7 +127,7 @@ async function main() {
   let blocked = false;
   try {
     await program.methods
-      .placeBet(0, new BN(stake))
+      .placeBet(0, new BN(stake), gameId)
       .accountsPartial({
         config: configPda(), market, vault,
         teamWallet: (await (program.account as any).config.fetch(configPda())).teamWallet,
@@ -134,13 +135,77 @@ async function main() {
         ticketMint: m2.publicKey, ticketAccount: a2.publicKey,
         bettor: authority.publicKey, tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId, rent: SYSVAR_RENT_PUBKEY,
+        ...(await collectionAccounts(program, 255 /* GAME_NONE: só os nulls */, m2.publicKey)),
       })
       .signers([authority, m2, a2])
       .rpc();
   } catch {
     blocked = true;
   }
-  check("place_bet sem contas de coleção num mercado com jogo → bloqueado", blocked);
+  check("place_bet sem contas de coleção declarando jogo → bloqueado", blocked);
+
+  // 6. negativo: game_id fora do allowed_games do mercado → GameNotAllowed
+  const m3 = Keypair.generate();
+  const a3 = Keypair.generate();
+  const wrongGame = GAME.penalty; // mercado só habilita o bit do hilo
+  const wrongCollection = await collectionAccounts(program, wrongGame, m3.publicKey);
+  let gameBlocked = false;
+  try {
+    await program.methods
+      .placeBet(0, new BN(stake), wrongGame)
+      .accountsPartial({
+        config: configPda(), market, vault,
+        teamWallet: (await (program.account as any).config.fetch(configPda())).teamWallet,
+        bet: betPda(market, m3.publicKey),
+        ticketMint: m3.publicKey, ticketAccount: a3.publicKey,
+        bettor: authority.publicKey, tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId, rent: SYSVAR_RENT_PUBKEY,
+        ...wrongCollection,
+      })
+      .preInstructions([ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 })])
+      .signers([authority, m3, a3])
+      .rpc();
+  } catch (e) {
+    gameBlocked = /GameNotAllowed|não habilitado/i.test(String((e as Error).message));
+  }
+  check("place_bet declarando jogo fora do allowed_games → GameNotAllowed", gameBlocked);
+
+  // 7. mint_game_badge: emite badge supply-1 membro da coleção pro jogador
+  const badgeMint = Keypair.generate();
+  const badgeAccount = Keypair.generate();
+  await program.methods
+    .mintGameBadge(gameId)
+    .accountsPartial({
+      config: configPda(),
+      authority: authority.publicKey,
+      recipient: authority.publicKey,
+      gameCollection: gameCollectionPda(gameId),
+      badgeMint: badgeMint.publicKey,
+      badgeAccount: badgeAccount.publicKey,
+      badgeMetadata: metadataPda(badgeMint.publicKey),
+      collectionMint: gc.collectionMint,
+      collectionMetadata: metadataPda(gc.collectionMint),
+      collectionMasterEdition: masterEditionPda(gc.collectionMint),
+      collectionAuthority: collectionAuthorityPda(),
+      tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+      rent: SYSVAR_RENT_PUBKEY,
+    })
+    .preInstructions([ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 })])
+    .signers([badgeMint, badgeAccount])
+    .rpc();
+  const badgeMeta = await connection.getAccountInfo(metadataPda(badgeMint.publicKey));
+  check(
+    "badge recebeu metadata do Token Metadata program",
+    !!badgeMeta && badgeMeta.owner.equals(TOKEN_METADATA_PROGRAM_ID)
+  );
+  try {
+    const v = decodeCollectionVerified(badgeMeta!.data, gc.collectionMint);
+    check("badge é membro VERIFICADO da coleção do jogo", v === true);
+  } catch (e) {
+    console.log(`  ⚠️  não decodificou collection.verified do badge: ${(e as Error).message}`);
+  }
 
   console.log(`\nresultado: ${passed} ✅ · ${failed} ❌`);
   process.exit(failed ? 1 : 0);

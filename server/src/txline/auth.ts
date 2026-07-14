@@ -69,7 +69,8 @@ export function loadCachedCredentials(): TxlineCredentials | null {
 
 function loadIdl(): anchor.Idl {
   const file = NETWORK === "mainnet" ? "txoracle-mainnet.json" : "txoracle-devnet.json";
-  const idlPath = new URL(`../idl/${file}`, import.meta.url);
+  // os IDLs vivem em server/idl/ (raiz do pacote), não em src/idl/
+  const idlPath = new URL(`../../idl/${file}`, import.meta.url);
   return JSON.parse(fs.readFileSync(idlPath, "utf8")) as anchor.Idl;
 }
 

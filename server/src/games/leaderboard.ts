@@ -46,6 +46,11 @@ export function addPoints(
   });
 }
 
+/** Entrada de uma wallet num board (ou null) — usado pra elegibilidade de badge. */
+export function boardEntry(game: LeaderGame, wallet: string): LeaderEntry | null {
+  return store.load().boards[game]?.find((e) => e.wallet === wallet) ?? null;
+}
+
 export function topBoard(game: LeaderGame, limit = 20) {
   const board = store.load().boards[game] ?? [];
   return [...board]

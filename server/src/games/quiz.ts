@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { addPoints } from "./leaderboard.js";
 import { getGameData, type GameMatch } from "./matches.js";
+import { HttpError } from "../http/errors.js";
 
 /**
  * Guess the Team (Fase 5): quiz de 5 rodadas — o server mostra o raio-X
@@ -106,7 +107,7 @@ function roundView(s: QuizSession) {
 }
 
 export async function startQuiz(wallet: string, name?: string) {
-  if (!wallet) throw new Error("wallet obrigatória");
+  if (!wallet) throw new HttpError(400, "wallet obrigatória");
   prune();
   const matches = (await getGameData()).matches;
   const used = new Set<string>();
@@ -128,7 +129,7 @@ export async function startQuiz(wallet: string, name?: string) {
 
 export function answerQuiz(id: string, choice: string) {
   const s = sessions.get(id);
-  if (!s || s.finished) throw new Error("quiz não encontrado (ou já terminou)");
+  if (!s || s.finished) throw new HttpError(404, "quiz não encontrado (ou já terminou)");
   const round = s.rounds[s.index];
   const late = Date.now() > s.roundExpiresAt;
   const correct = !late && choice === round.answer;

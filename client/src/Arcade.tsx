@@ -240,6 +240,10 @@ export default function Arcade({ game }: { game: ArcadeGame }) {
           </div>
         )}
 
+        {game === "live" && account.address && (
+          <LiveBadge token={account.token} refreshKey={lbKey} />
+        )}
+
         <Leaderboard
           url={`/api/arcade/${game}/leaderboard`}
           you={account.address}
@@ -248,6 +252,55 @@ export default function Arcade({ game }: { game: ArcadeGame }) {
 
         <footer>{t.game.gameFooter}</footer>
       </div>
+    </div>
+  );
+}
+
+/* NFT de identidade do Live Challenge: sem aposta on-chain, o badge é emitido
+   pelo server (1 por conta) quando o jogador acerta ao menos um desafio. */
+function LiveBadge({ token, refreshKey }: { token: string | null; refreshKey: number }) {
+  const { t } = useLang();
+  const [status, setStatus] = useState<{ eligible: boolean; minted: boolean } | null>(null);
+  const [claiming, setClaiming] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!token) return;
+    api("/nft/badge/live", undefined, token)
+      .then(setStatus)
+      .catch((e) => console.warn("[arcade] status do badge falhou:", e));
+  }, [token, refreshKey]);
+
+  if (!token || !status || (!status.eligible && !status.minted)) {
+    return token ? <p className="dim center">{t.arcade.badgeHint}</p> : null;
+  }
+
+  async function claim() {
+    setClaiming(true);
+    setError("");
+    try {
+      await api("/nft/badge/live/claim", {}, token ?? undefined);
+      setStatus((s) => (s ? { ...s, minted: true } : s));
+      celebrateWin();
+      playSfx("win");
+    } catch (e) {
+      console.error("[arcade] claim do badge falhou:", e);
+      setError(String((e as Error).message));
+    } finally {
+      setClaiming(false);
+    }
+  }
+
+  return (
+    <div className="endgame">
+      {status.minted ? (
+        <p className="mono center">🏅 {t.arcade.badgeOwned}</p>
+      ) : (
+        <button className="primary" disabled={claiming} onClick={claim}>
+          {claiming ? t.arcade.badgeClaiming : t.arcade.badgeClaim}
+        </button>
+      )}
+      {error && <p className="dim center run-error">⚠️ {error}</p>}
     </div>
   );
 }

@@ -78,8 +78,12 @@ export function isCustodial(user: UserRecord): boolean {
 }
 
 /** Bônus de boas-vindas em devnet pra contas custodiais novas: dá pra jogar
- *  sem faucet. Contas `wallet` usam os próprios fundos. */
-const WELCOME_LAMPORTS = 0.03 * LAMPORTS_PER_SOL;
+ *  sem faucet. Contas `wallet` usam os próprios fundos.
+ *
+ *  Dimensionado pelo custo real de uma aposta com ticket-NFT (~0.0117 SOL):
+ *  stake mínimo 0.001 + rent da conta Bet, do mint, da token account e da
+ *  metadata Metaplex (só a metadata é 0.0056). 0.15 SOL ≈ 12 apostas. */
+const WELCOME_LAMPORTS = 0.15 * LAMPORTS_PER_SOL;
 const MIN_AUTHORITY_RESERVE = 0.3 * LAMPORTS_PER_SOL;
 
 async function fundWelcome(user: UserRecord) {

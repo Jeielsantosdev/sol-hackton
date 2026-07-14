@@ -12,7 +12,8 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { BN } from "@coral-xyz/anchor";
+// bn.js direto: o dist CJS do anchor não expõe BN como named export em Node ESM
+import BN from "bn.js";
 import {
   ComputeBudgetProgram,
   Keypair,
@@ -22,6 +23,7 @@ import {
 } from "@solana/web3.js";
 import { DATA_DIR } from "../config.js";
 import {
+  GAME_NONE,
   betPda,
   collectionAccounts,
   configPda,
@@ -29,6 +31,12 @@ import {
   TOKEN_PROGRAM_ID,
   vaultPda,
 } from "../chain/client.js";
+
+/** Jogo declarado na aposta: o principal do mercado, degradando pra GAME_NONE
+ *  quando a coleção ainda não existe (collectionAccounts vazio). */
+function effectiveGame(marketAcc: any, collection: Record<string, unknown>): number {
+  return collection.gameCollection != null ? marketAcc.gameId : GAME_NONE;
+}
 
 const API = process.env.API_URL || "http://localhost:3001";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -80,7 +88,7 @@ async function placeBetOnchain(
     ticketMint.publicKey
   );
   await chain.program.methods
-    .placeBet(outcome, new BN(lamports))
+    .placeBet(outcome, new BN(lamports), effectiveGame(marketAcc, collection))
     .accountsPartial({
       config: configPda(),
       market,
@@ -224,7 +232,8 @@ async function main() {
     check("run terminou vencedora", state.status === "won", state.status);
 
     const after = await api(`/api/runs/${run.id}/guess`, { dir: "higher" }, TOKEN);
-    check("guess após o fim → bloqueado", after.status === 400);
+    // 409: conflito de estado (run encerrada) — não é erro de input do usuário
+    check("guess após o fim → bloqueado", after.status === 409);
 
     // espera o cron liquidar on-chain
     process.stdout.write("  aguardando liquidação");

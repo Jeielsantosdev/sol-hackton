@@ -1,7 +1,8 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { BN } from "@coral-xyz/anchor";
+// bn.js direto: o dist CJS do anchor não expõe BN como named export em Node ESM
+import BN from "bn.js";
 import {
   LAMPORTS_PER_SOL,
   PublicKey,
@@ -18,6 +19,7 @@ import {
   GAME,
   configPda,
   gameIdOrNone,
+  marketGames,
   getChain,
   marketPda,
   vaultPda,
@@ -237,7 +239,7 @@ export async function createRun(
   mode: RunMode = "target"
 ) {
   const chain = getChain();
-  if (!chain) throw new Error("on-chain desativado no server (authority ausente)");
+  if (!chain) throw new HttpError(503, "on-chain desativado no server (authority ausente)");
 
   // wallet vem da sessão autenticada — ninguém cria run "em nome" de terceiros
   const wallet = userAddress(user);
@@ -272,17 +274,18 @@ export async function createRun(
   const oddsBps =
     mode === "infinite" ? INFINITE_LADDER_BPS[INFINITE_CAP_STREAK] : RUN_ODDS_BPS[target];
   if (!oddsBps) {
-    throw new Error(`meta inválida: escolha entre ${Object.keys(RUN_ODDS_BPS).join(", ")}`);
+    throw new HttpError(400, `meta inválida: escolha entre ${Object.keys(RUN_ODDS_BPS).join(", ")}`);
   }
   if (!Number.isInteger(stakeLamports) || stakeLamports < MIN_STAKE_LAMPORTS) {
-    throw new Error(`stake mínimo: ${MIN_STAKE_LAMPORTS} lamports`);
+    throw new HttpError(400, `stake mínimo: ${MIN_STAKE_LAMPORTS} lamports`);
   }
 
   const config: any = await (chain.program.account as any).config.fetch(configPda());
   const net = stakeLamports - Math.floor((stakeLamports * config.feeBps) / BPS);
   const payout = Math.floor((net * oddsBps) / BPS);
   if (payout > MAX_PAYOUT_LAMPORTS) {
-    throw new Error(
+    throw new HttpError(
+      400,
       `stake alto demais para essa meta: payout máximo é ${MAX_PAYOUT_LAMPORTS / LAMPORTS_PER_SOL} SOL`
     );
   }
@@ -299,7 +302,10 @@ export async function createRun(
   odds[RUN_OUTCOME_WIN] = new BN(oddsBps);
   odds[RUN_OUTCOME_LOSE] = new BN(BPS + 1); // exigido > 1x; ninguém aposta nele
 
-  const gameId = mode === "infinite" ? GAME.infinite : GAME.hilo;
+  const { gameId, allowedGames } = await marketGames(
+    chain.program,
+    mode === "infinite" ? GAME.infinite : GAME.hilo
+  );
   await chain.program.methods
     .createMarket(
       marketId,
@@ -309,7 +315,8 @@ export async function createRun(
       odds,
       new BN(closeTs),
       new BN(resolveAfterTs),
-      await gameIdOrNone(chain.program, gameId)
+      gameId,
+      allowedGames
     )
     .accounts({
       config: configPda(),
@@ -375,7 +382,7 @@ async function ensureBetPlaced(run: RunRecord) {
   );
   const pool = (acc.pools[RUN_OUTCOME_WIN] as BN).toNumber();
   if (pool < run.netLamports) {
-    throw new Error("aposta ainda não confirmada on-chain — assine o place_bet primeiro");
+    throw new HttpError(400, "aposta ainda não confirmada on-chain — assine o place_bet primeiro");
   }
   run.status = "playing";
   saveStore();
@@ -386,7 +393,7 @@ export async function guessRun(id: string, dir: "higher" | "lower", user: UserRe
   if (!run) throw new HttpError(404, "run não encontrada");
   assertRunOwner(run, user);
   if (run.status === "awaiting_bet") await ensureBetPlaced(run);
-  if (run.status !== "playing") throw new Error(`run encerrada (${run.status})`);
+  if (run.status !== "playing") throw new HttpError(409, `run encerrada (${run.status})`);
 
   const current = run.rounds[run.index];
   const next = run.rounds[run.index + 1];
@@ -395,7 +402,7 @@ export async function guessRun(id: string, dir: "higher" | "lower", user: UserRe
     run.status = "lost";
     run.finalOutcome = RUN_OUTCOME_LOSE;
     saveStore();
-    throw new Error("run sem cartas restantes");
+    throw new HttpError(409, "run sem cartas restantes");
   }
 
   const push = next.value === current.value;
@@ -435,13 +442,13 @@ export async function cashoutRun(id: string, user: UserRecord) {
   if (!run) throw new HttpError(404, "run não encontrada");
   assertRunOwner(run, user);
   if (run.status !== "playing" && run.status !== "awaiting_bet") {
-    throw new Error(`run encerrada (${run.status})`);
+    throw new HttpError(409, `run encerrada (${run.status})`);
   }
 
   const infinite = (run.mode ?? "target") === "infinite";
   if (infinite && run.status === "playing" && run.streak >= 1) {
     const chain = getChain();
-    if (!chain) throw new Error("on-chain desativado no server");
+    if (!chain) throw new HttpError(503, "on-chain desativado no server");
     const total = ladderPayout(run, run.streak);
     const profit = total - run.netLamports;
     const market = marketPda(new BN(run.marketId));

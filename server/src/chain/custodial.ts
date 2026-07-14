@@ -1,4 +1,6 @@
-import { BN } from "@coral-xyz/anchor";
+// bn.js direto: o dist CJS do anchor não expõe BN como named export em Node ESM
+import BN from "bn.js";
+import { HttpError } from "../http/errors.js";
 import {
   ComputeBudgetProgram,
   Keypair,
@@ -10,6 +12,7 @@ import {
   betPda,
   collectionAccounts,
   configPda,
+  GAME_NONE,
   getChain,
   marketPda,
   TOKEN_PROGRAM_ID,
@@ -32,10 +35,11 @@ export async function custodialPlaceBet(
   user: Keypair,
   marketIdStr: string,
   outcome: number,
-  lamports: number
+  lamports: number,
+  gameId?: number
 ): Promise<CustodialBetResult> {
   const chain = getChain();
-  if (!chain) throw new Error("on-chain desativado");
+  if (!chain) throw new HttpError(503, "on-chain desativado");
   const market = marketPda(new BN(marketIdStr));
   const [config, marketAcc] = await Promise.all([
     (chain.program.account as any).config.fetch(configPda()),
@@ -44,14 +48,14 @@ export async function custodialPlaceBet(
 
   const ticketMint = Keypair.generate();
   const ticketAccount = Keypair.generate();
-  // contas da coleção-identidade do jogo (o ticket entra na coleção do jogo do mercado)
-  const collection = await collectionAccounts(
-    chain.program,
-    marketAcc.gameId,
-    ticketMint.publicKey
-  );
+  // Jogo declarado na aposta: define a coleção do ticket. Sem gameId explícito,
+  // usa o jogo principal do mercado; se a coleção ainda não existe on-chain,
+  // degrada pra GAME_NONE (ticket sem coleção) — o contrato valida o resto.
+  const requested = gameId ?? marketAcc.gameId;
+  const collection = await collectionAccounts(chain.program, requested, ticketMint.publicKey);
+  const effectiveGameId = collection.gameCollection ? requested : GAME_NONE;
   const signature = await chain.program.methods
-    .placeBet(outcome, new BN(lamports))
+    .placeBet(outcome, new BN(lamports), effectiveGameId)
     .accountsPartial({
       config: configPda(),
       market,
@@ -85,7 +89,7 @@ export async function custodialClaim(
   ticketAccount: string
 ): Promise<string> {
   const chain = getChain();
-  if (!chain) throw new Error("on-chain desativado");
+  if (!chain) throw new HttpError(503, "on-chain desativado");
   const market = new PublicKey(marketAddress);
   const mint = new PublicKey(ticketMint);
 

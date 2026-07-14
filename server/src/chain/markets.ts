@@ -1,8 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-import { BN } from "@coral-xyz/anchor";
+// bn.js direto: o dist CJS do anchor não expõe BN como named export em Node ESM
+import BN from "bn.js";
 import { SystemProgram } from "@solana/web3.js";
 import { DATA_DIR } from "../config.js";
+import { HttpError } from "../http/errors.js";
 import { getCredentials } from "../txline/auth.js";
 import {
   createClient,
@@ -16,6 +18,7 @@ import {
   GAME,
   configPda,
   gameIdOrNone,
+  marketGames,
   getChain,
   marketPda,
   marketStateLabel,
@@ -79,9 +82,13 @@ const zeroOdds = () => Array(8).fill(new BN(0));
 
 async function createParimutuelMarket(rec: Omit<MarketRecord, "pda" | "status" | "createdAt">) {
   const chain = getChain();
-  if (!chain) throw new Error("chain desativada");
+  if (!chain) throw new HttpError(503, "chain desativada");
   const marketId = new BN(rec.marketId);
   const market = marketPda(marketId);
+  // mercados 1X2 servem a dois jogos: "Guess the Team" (principal) e o pick do
+  // Survivor — cada aposta declara o seu game_id no place_bet e o ticket entra
+  // na coleção do jogo correspondente.
+  const { gameId, allowedGames } = await marketGames(chain.program, GAME.team, GAME.survivor);
   await chain.program.methods
     .createMarket(
       marketId,
@@ -91,8 +98,8 @@ async function createParimutuelMarket(rec: Omit<MarketRecord, "pda" | "status" |
       zeroOdds(),
       new BN(rec.closeTs),
       new BN(rec.resolveAfterTs),
-      // mercados 1X2 = "Guess the Team" (palpite no vencedor da partida)
-      await gameIdOrNone(chain.program, GAME.team)
+      gameId,
+      allowedGames
     )
     .accounts({
       config: configPda(),
@@ -141,6 +148,17 @@ async function fetchUpcomingFixtures(): Promise<Fixture[] | null> {
     return null;
   }
 }
+
+/**
+ * Namespace dos mercados de fixture real. O `market_id` é a seed da PDA do
+ * mercado, então usar o `fixture_id` cru colide com PDAs criadas por versões
+ * antigas do programa (mesma seed, layout de conta diferente → o create falha
+ * com "conta já existe" e o fixture fica sem mercado pra sempre). O epoch é
+ * bumpado a cada mudança no layout de `Market`.
+ *   v2 = layout com game_id + allowed_games (identidade de NFT por jogo)
+ */
+const FIXTURE_MARKET_EPOCH = 2_000_000_000_000;
+const fixtureMarketId = (fixtureId: number) => String(FIXTURE_MARKET_EPOCH + fixtureId);
 
 /** IDs de fixtures demo ficam num namespace alto pra nunca colidir com os reais. */
 const DEMO_FIXTURE_BASE = 900_000_000;
@@ -229,7 +247,7 @@ export async function syncMarkets() {
     const closeTs = Math.floor(f.StartTime / 1000);
     try {
       await createParimutuelMarket({
-        marketId: String(f.FixtureId),
+        marketId: fixtureMarketId(f.FixtureId),
         fixtureId: f.FixtureId,
         home,
         away,

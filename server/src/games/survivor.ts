@@ -1,5 +1,6 @@
 import { findMarketRecord, listMarkets } from "../chain/markets.js";
 import { JsonFileStore } from "../store/jsonFile.js";
+import { HttpError } from "../http/errors.js";
 
 /**
  * Survivor (Fase 3): um pick por rodada nos mercados 1X2. Errou um → eliminado
@@ -71,22 +72,22 @@ export async function makePick(
   name?: string
 ) {
   syncSurvivor();
-  if (!wallet) throw new Error("wallet obrigatória");
-  if (![0, 1, 2].includes(outcome)) throw new Error("outcome deve ser 0, 1 ou 2");
+  if (!wallet) throw new HttpError(400, "wallet obrigatória");
+  if (![0, 1, 2].includes(outcome)) throw new HttpError(400, "outcome deve ser 0, 1 ou 2");
 
   const market = findMarketRecord(marketId);
   const now = Math.floor(Date.now() / 1000);
   if (!market || market.status !== "open" || market.closeTs <= now) {
-    throw new Error("mercado fechado ou inexistente — escolha outro jogo");
+    throw new HttpError(409, "mercado fechado ou inexistente — escolha outro jogo");
   }
 
   const mine = picksOf(wallet);
   if (mine.some((p) => p.result === "eliminated")) {
-    throw new Error("você foi eliminado nesta temporada — acompanhe como espectador");
+    throw new HttpError(403, "você foi eliminado nesta temporada — acompanhe como espectador");
   }
   const round = roundOf(market.closeTs);
   if (mine.some((p) => p.round === round && p.result !== "void")) {
-    throw new Error("você já tem um pick nessa rodada");
+    throw new HttpError(409, "você já tem um pick nessa rodada");
   }
 
   const pick: SurvivorPick = {

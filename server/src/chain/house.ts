@@ -1,11 +1,14 @@
 import crypto from "node:crypto";
-import { BN } from "@coral-xyz/anchor";
+// bn.js direto: o dist CJS do anchor não expõe BN como named export em Node ESM
+import BN from "bn.js";
 import { LAMPORTS_PER_SOL, SystemProgram } from "@solana/web3.js";
+import { HttpError } from "../http/errors.js";
 import {
   BPS,
   GAME_NONE,
   configPda,
   gameIdOrNone,
+  marketGames,
   getChain,
   marketPda,
   vaultPda,
@@ -44,13 +47,14 @@ export async function createHouseMarket(
   gameId: number = GAME_NONE
 ): Promise<HouseMarketInfo> {
   const chain = getChain();
-  if (!chain) throw new Error("on-chain desativado no server (authority ausente)");
+  if (!chain) throw new HttpError(503, "on-chain desativado no server (authority ausente)");
 
   const config: any = await (chain.program.account as any).config.fetch(configPda());
   const net = stakeLamports - Math.floor((stakeLamports * config.feeBps) / BPS);
   const payout = Math.floor((net * oddsBps) / BPS);
   if (payout > HOUSE_MAX_PAYOUT_LAMPORTS) {
-    throw new Error(
+    throw new HttpError(
+      400,
       `stake alto demais para essa meta: payout máximo é ${
         HOUSE_MAX_PAYOUT_LAMPORTS / LAMPORTS_PER_SOL
       } SOL`
@@ -69,6 +73,7 @@ export async function createHouseMarket(
   odds[HOUSE_WIN] = new BN(oddsBps);
   odds[HOUSE_LOSE] = new BN(BPS + 1); // exigido > 1x; ninguém aposta nele
 
+  const games = await marketGames(chain.program, gameId);
   await chain.program.methods
     .createMarket(
       marketId,
@@ -78,7 +83,8 @@ export async function createHouseMarket(
       odds,
       new BN(closeTs),
       new BN(resolveAfterTs),
-      await gameIdOrNone(chain.program, gameId)
+      games.gameId,
+      games.allowedGames
     )
     .accounts({
       config: configPda(),
@@ -123,7 +129,7 @@ export async function houseBetArrived(marketId: string, minNet: number): Promise
 /** Resolve o mercado e devolve pro caixa o que não é do jogador. */
 export async function settleHouseMarket(marketId: string, outcome: number) {
   const chain = getChain();
-  if (!chain) throw new Error("chain desativada");
+  if (!chain) throw new HttpError(503, "chain desativada");
   const market = marketPda(new BN(marketId));
 
   await chain.program.methods
