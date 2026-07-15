@@ -8,7 +8,11 @@
  *   node client/e2e/browser-e2e.mjs
  */
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { chromium } from "playwright";
+
+// tweetnacl do server: assina o SIWS (ed25519) fora do browser
+const nacl = createRequire(new URL("../../server/package.json", import.meta.url))("tweetnacl");
 
 const SECRET = JSON.parse(readFileSync("/tmp/test-wallet.json", "utf8"));
 const BASE = process.env.BASE_URL || "http://localhost:5173";
@@ -24,6 +28,14 @@ const browser = await chromium.launch();
 const ctx = await browser.newContext({
   viewport: { width: 1280, height: 900 },
   reducedMotion: "reduce", // pula a animação de suspense: reveal instantâneo
+});
+
+// assinatura de mensagem (SIWS) feita aqui no Node — o provider falso chama via
+// binding. Sem signMessage a sessão de backend não nasce e as rotas de jogo
+// protegidas (pós-auditoria de IDOR) respondem 401.
+await ctx.exposeFunction("__e2eSignMessage", (msgB64) => {
+  const sig = nacl.sign.detached(Buffer.from(msgB64, "base64"), Uint8Array.from(SECRET));
+  return Buffer.from(sig).toString("base64");
 });
 
 // wallet falsa: mesma interface do Phantom, assinando com o keypair de teste.
@@ -43,6 +55,12 @@ await ctx.addInitScript(`
     async connect() { this._ensure(); return { publicKey: this.publicKey }; },
     async disconnect() { this.publicKey = null; },
     async signTransaction(tx) { this._ensure(); tx.partialSign(this._kp); return tx; },
+    async signMessage(message) {
+      this._ensure();
+      const b64 = btoa(String.fromCharCode(...message));
+      const sigB64 = await window.__e2eSignMessage(b64);
+      return { signature: Uint8Array.from(atob(sigB64), (c) => c.charCodeAt(0)) };
+    },
     async signAllTransactions(txs) {
       this._ensure();
       txs.forEach((t) => t.partialSign(this._kp));
@@ -78,7 +96,9 @@ check("wallet conectada (endereço na navbar)", /…/.test(chip ?? ""), chip ?? 
 await page.locator(".target-card", { hasText: "3" }).first().click();
 await page.locator(".stake-chip", { hasText: "0.01" }).click();
 await page.getByRole("button", { name: /criar run/i }).click();
-await page.getByText(/assine a aposta/i).waitFor({ timeout: 60_000 });
+// o painel "Como jogar" (recolhido) também contém "assine a aposta" — o botão
+// de assinar é o sinal inequívoco de que a run foi criada
+await page.getByRole("button", { name: /✍️ apostar/i }).waitFor({ timeout: 60_000 });
 check("run criada (mercado house-backed on-chain)", true);
 
 // assinar o place_bet
