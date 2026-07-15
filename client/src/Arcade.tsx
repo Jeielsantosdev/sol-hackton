@@ -151,7 +151,7 @@ export default function Arcade({ game }: { game: ArcadeGame }) {
           <p className="game-sub">{texts.sub}</p>
         </header>
 
-        <HowTo steps={t.howto.penalty.steps} profit={t.howto.penalty.profit} />
+        <HowTo steps={t.howto[game].steps} profit={t.howto[game].profit} />
 
         {error && <p className="dim center run-error">⚠️ {error}</p>}
         {!account.address && <LoginPanel note={t.arcade.connectFirst} />}

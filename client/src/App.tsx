@@ -3,6 +3,7 @@ import Arcade from "./Arcade";
 import Game from "./Game";
 import GamesHub from "./GamesHub";
 import GuessStats from "./GuessStats";
+import GuessTeam from "./GuessTeam";
 import Landing from "./Landing";
 import Markets from "./Markets";
 import StakedHilo from "./StakedHilo";
@@ -33,6 +34,10 @@ export default function App() {
       return <Survivor />;
     case "#/penalty":
       return <Arcade game="penalty" />;
+    case "#/live":
+      return <Arcade game="live" />;
+    case "#/team":
+      return <GuessTeam />;
     case "#/mercados":
       return <Markets />;
     case "#/carteira":

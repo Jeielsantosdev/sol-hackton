@@ -2418,6 +2418,15 @@ button.lo:hover:not(:disabled) {
   line-height: 1;
 }
 
+/* arte da NFT de identidade do jogo no card do hub */
+.hub-art {
+  width: 72px;
+  height: 72px;
+  border-radius: 14px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.04);
+}
+
 .hub-head {
   display: flex;
   align-items: center;
@@ -2910,6 +2919,8 @@ button.lo:hover:not(:disabled) {
 .arcade-question { margin: 0 0 14px; font-size: 1.3rem; }
 
 .arcade-timer {
+  /* o .card base centraliza (align-items) e encolheria a barra pra largura 0 */
+  align-self: stretch;
   height: 10px;
   border-radius: 999px;
   background: var(--surface-2);
@@ -2933,6 +2944,53 @@ button.lo:hover:not(:disabled) {
 .arcade-verdict { font-size: 1.2rem; font-weight: 700; margin: 0; }
 .arcade-verdict.ok { color: var(--mint); }
 .arcade-verdict.bad { color: var(--red); }
+
+/* guess the team (#/team): raio-X estatístico + 4 opções */
+.quiz-clues {
+  align-self: stretch;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 16px;
+  margin: 0 0 16px;
+  text-align: left;
+}
+
+.quiz-clue {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.quiz-clue dt { color: var(--muted); font-size: 0.82rem; }
+.quiz-clue dd { margin: 0; font-weight: 600; }
+
+.quiz-options {
+  align-self: stretch;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.quiz-option {
+  padding: 12px 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.1s ease;
+}
+
+.quiz-option:hover { border-color: var(--mint); transform: translateY(-1px); }
+
+@media (max-width: 480px) {
+  .quiz-clues,
+  .quiz-options { grid-template-columns: 1fr; }
+}
 
 /* painel "Como jogar" */
 .howto {

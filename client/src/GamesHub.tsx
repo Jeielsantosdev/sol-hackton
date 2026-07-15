@@ -4,7 +4,9 @@ import { useLang } from "./i18n";
 
 interface GameEntry {
   id: keyof ReturnType<typeof useLang>["t"]["hub"]["games"];
+  /** arte da NFT de identidade do jogo (miniatura em public/games); emoji é o fallback */
   icon: string;
+  img?: string;
   href?: string;
   /** segundo modo jogável (ex.: valendo SOL) */
   hrefStaked?: string;
@@ -14,15 +16,14 @@ interface GameEntry {
 
 // Ordem do grid = ordem de entrega do plano: o jogável vem primeiro.
 const GAMES: GameEntry[] = [
-  { id: "hilo", icon: "🎯", href: "#/jogar", hrefStaked: "#/hilo-apostado", phase: 1 },
-  { id: "infiniteHilo", icon: "♾️", href: "#/hilo-infinito", phase: 1 },
+  { id: "hilo", icon: "🎯", img: "/games/hi-lo.webp", href: "#/jogar", hrefStaked: "#/hilo-apostado", phase: 1 },
+  { id: "infiniteHilo", icon: "♾️", img: "/games/infinite-hi-lo.webp", href: "#/hilo-infinito", phase: 1 },
   { id: "markets1x2", icon: "🏟️", href: "#/mercados", phase: 2 },
-  { id: "guessStats", icon: "📊", href: "#/stats", phase: 2 },
-  { id: "survivor", icon: "🛡️", href: "#/survivor", phase: 3 },
-  { id: "penalty", icon: "🥅", href: "#/penalty", phase: 4 },
-  // em construção (Fase 5): motores prontos no server, UI por vir
-  { id: "liveChallenge", icon: "⚡", phase: 5 },
-  { id: "guessTeam", icon: "🕵️", phase: 5 },
+  { id: "guessStats", icon: "📊", img: "/games/guess-the-stats.webp", href: "#/stats", phase: 2 },
+  { id: "survivor", icon: "🛡️", img: "/games/survivor.webp", href: "#/survivor", phase: 3 },
+  { id: "penalty", icon: "🥅", img: "/games/penalty-predictor.webp", href: "#/penalty", phase: 4 },
+  { id: "liveChallenge", icon: "⚡", img: "/games/live-challenge.webp", href: "#/live", phase: 5 },
+  { id: "guessTeam", icon: "🕵️", img: "/games/guess-the-team.webp", href: "#/team", phase: 5 },
 ];
 
 export default function GamesHub() {
@@ -56,9 +57,13 @@ export default function GamesHub() {
             const playable = Boolean(g.href);
             return (
               <div key={g.id} className={`card hub-card ${playable ? "" : "hub-soon"}`}>
-                <div className="hub-icon" aria-hidden="true">
-                  {g.icon}
-                </div>
+                {g.img ? (
+                  <img className="hub-art" src={g.img} alt={info.name} loading="lazy" />
+                ) : (
+                  <div className="hub-icon" aria-hidden="true">
+                    {g.icon}
+                  </div>
+                )}
                 <div className="hub-head">
                   <strong>{info.name}</strong>
                   <span className="badge mono">{t.hub.phaseLabel(g.phase)}</span>

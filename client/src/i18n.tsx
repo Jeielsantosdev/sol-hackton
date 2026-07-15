@@ -821,6 +821,26 @@ const pt = {
       profit:
         "A casa fundeia o prêmio antes (6/8 paga 1,3× · 7/8 paga 2,2× · 8/8 paga 7×) e lucra a margem sobre o justo estatístico + o stake das sessões perdidas.",
     },
+    live: {
+      steps: [
+        "Peça o próximo desafio: gol, escanteio ou cartão nos próximos minutos da partida.",
+        "Responda SIM ou NÃO antes do timer estourar — estourou, conta como erro e a sequência zera.",
+        "Acertos seguidos multiplicam os pontos no ranking.",
+        "Acertou ao menos um desafio? Resgate a NFT de identidade do jogo — grátis, emitida pelo servidor.",
+      ],
+      profit:
+        "Modo 100% grátis: sem aposta, sem stake. A NFT do jogo é um colecionável de identidade — não dá direito a prêmio.",
+    },
+    quiz: {
+      steps: [
+        "São 5 rodadas: em cada uma, o raio-X estatístico de uma seleção numa partida real da Copa.",
+        "Você tem 25 segundos e 4 opções — descubra quem jogou assim.",
+        "Acerto vale 20 pontos + bônus de sequência; a resposta certa só existe no servidor.",
+        "Feche as 5 rodadas e dispute o ranking do jogo.",
+      ],
+      profit:
+        "Modo 100% grátis: sem aposta, sem stake — só pontos e ranking. A versão valendo SOL vem depois, sobre o motor de runs.",
+    },
   },
 
   statsBet: {
@@ -1661,6 +1681,26 @@ const en: Dict = {
       ],
       profit:
         "The house funds the prize upfront (6/8 pays 1.3× · 7/8 pays 2.2× · 8/8 pays 7×) and earns the margin over fair value plus the stake of lost sessions.",
+    },
+    live: {
+      steps: [
+        "Request the next challenge: goal, corner or card in the next minutes of the match.",
+        "Answer YES or NO before the timer runs out — too late counts as a miss and resets the streak.",
+        "Consecutive hits multiply your leaderboard points.",
+        "Hit at least one challenge? Claim the game's identity NFT — free, minted by the server.",
+      ],
+      profit:
+        "Fully free mode: no bet, no stake. The game NFT is an identity collectible — it grants no prize.",
+    },
+    quiz: {
+      steps: [
+        "5 rounds: each shows the statistical X-ray of a national team in a real World Cup match.",
+        "You have 25 seconds and 4 options — figure out who played like that.",
+        "A hit is worth 20 points + streak bonus; the right answer only exists on the server.",
+        "Finish all 5 rounds and climb the game leaderboard.",
+      ],
+      profit:
+        "Fully free mode: no bet, no stake — just points and ranking. The SOL-staked version comes later, on top of the runs engine.",
     },
   },
 
