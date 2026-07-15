@@ -23,6 +23,8 @@ const pt = {
     howToPlay: "Como jogar",
     ranking: "Ranking",
     history: "Histórico",
+    games: "Jogos",
+    wallet: "Carteira",
     soon: "em breve",
     menuAria: "Abrir menu de navegação",
   },
@@ -449,6 +451,420 @@ const pt = {
       possession: "% de posse",
     } as Record<StatCategory, string>,
   },
+
+  hub: {
+    docTitle: "Jogos · ChainPlay",
+    title: "Escolha seu jogo",
+    sub: "Palpites com dados reais da Copa 2026 — jogue grátis ou valendo SOL na devnet.",
+    play: "Jogar →",
+    playStaked: "💰 Valendo SOL",
+    building: "em construção",
+    phaseLabel: (n: number) => `fase ${n}`,
+    games: {
+      hilo: {
+        name: "Hi-Lo",
+        desc: "A próxima partida vem MAIOR ou menor? Defenda sua sequência pelos 104 jogos da Copa.",
+      },
+      markets1x2: {
+        name: "Mercados 1X2",
+        desc: "Casa, empate ou fora? Aposte no pote comunitário — quem acerta divide tudo, proporcional ao stake.",
+      },
+      infiniteHilo: {
+        name: "Infinite Hi-Lo",
+        desc: "Categorias rotativas, multiplicador crescente e a decisão de ouro: seguir ou sacar?",
+      },
+      guessStats: {
+        name: "Guess the Stats",
+        desc: "Preveja os números finais da partida antes do apito inicial. Quanto mais perto, mais pontos.",
+      },
+      survivor: {
+        name: "Survivor",
+        desc: "Um palpite por rodada. Um erro e você está fora. Quantos sobrevivem até a final?",
+      },
+      penalty: {
+        name: "Penalty Predictor",
+        desc: "Pênalti na Copa: você tem segundos pra cravar. Gol ou defesa?",
+      },
+      liveChallenge: {
+        name: "Live Challenge",
+        desc: "Desafios relâmpago durante a partida: próximo gol, próximo escanteio, cartão nos próximos minutos.",
+      },
+      guessTeam: {
+        name: "Guess the Team",
+        desc: "Só as estatísticas na mesa. Você descobre qual seleção jogou?",
+      },
+    },
+  },
+
+  auth: {
+    title: "Entre para jogar valendo SOL",
+    withWallet: "🔗 Conectar wallet",
+    asGuest: "Entrar como convidado (devnet)",
+    logout: "sair",
+    working: "Entrando…",
+    googleSetupHint:
+      "Login com Google: defina GOOGLE_CLIENT_ID no server/.env e VITE_GOOGLE_CLIENT_ID no client/.env (OAuth Client ID do Google Cloud, origem http://localhost:5173).",
+    noWalletHint:
+      "Sem extensão de wallet? Use o Google ou o modo convidado — criamos uma conta custodial de devnet pra você.",
+    apiOfflineHint:
+      "API fora do ar — login social/convidado indisponível. Conecte sua wallet (web3 connect): as apostas vão direto pra chain. Pra reativar tudo, suba o server: cd server && npm run dev.",
+    custodialBadge: (name: string) => `conta custodial · ${name}`,
+    custodialBalance: (sol: string) => `saldo: ${sol}`,
+    custodialFund: (addr: string) =>
+      `Pra recarregar, mande SOL de devnet para ${addr} (faucet.solana.com).`,
+  },
+
+  staked: {
+    docTitle: "Hi-Lo Valendo SOL · ChainPlay",
+    title: "Hi-Lo · valendo SOL",
+    sub: "Escolha a meta de acertos, aposte na devnet e a casa paga se você bater. A sequência é gerada no servidor — ninguém vê o próximo número.",
+    chooseTarget: "Meta de acertos seguidos",
+    oddsX: (x: string) => `paga ${x}×`,
+    stakeLabel: "Sua aposta",
+    potential: "Prêmio se bater a meta",
+    start: "🎲 Criar run apostada",
+    creating: "Criando mercado on-chain…",
+    connectFirst: "Conecte a wallet pra jogar valendo SOL.",
+    connect: "Conectar wallet",
+    connecting: "Conectando…",
+    betTitle: "Run criada! Agora assine a aposta",
+    betNote: (min: number) =>
+      `Você tem ${min} min pra assinar antes do mercado fechar. A taxa de 10% vai pra plataforma; o resto entra no vault do mercado.`,
+    signBet: (sol: string) => `✍️ Apostar ${sol}`,
+    signing: "Aguardando assinatura…",
+    confirming: "Confirmando on-chain…",
+    betExpired: "A janela de aposta expirou. Crie outra run.",
+    progressLabel: (n: number, target: number) => `acertos ${n} de ${target}`,
+    cashout: "🏳️ Desistir da run",
+    wonTitle: "🏆 Meta batida!",
+    wonSub: (sol: string) => `A casa te deve ${sol}. Aguardando a liquidação on-chain…`,
+    settling: "liquidando o mercado on-chain…",
+    claimBtn: (sol: string) => `💰 Resgatar ${sol}`,
+    claiming: "Resgatando…",
+    claimedMsg: "Prêmio na sua wallet! 🎉",
+    lostTitle: "💀 Fim da run!",
+    lostSub: "O stake fica com a casa. Bora de novo?",
+    expiredTitle: "⌛ Run expirada",
+    playAgain: "↻ Nova run",
+    seeWallet: "Ver meus tickets →",
+    error: "Algo deu errado",
+    devnetNote: "SOL de devnet — sem valor real. Pegue no faucet.solana.com.",
+    bettingAs: (name: string) => `Apostando como ${name}`,
+    balanceLabel: "saldo",
+    insufficient: (stake: string) =>
+      `Saldo insuficiente pra apostar ${stake} — pegue SOL de devnet no faucet.solana.com.`,
+  },
+
+  markets: {
+    docTitle: "Mercados 1X2 · ChainPlay",
+    title: "Mercados da Copa",
+    sub: "Aposte no resultado (casa · empate · fora). O pote é dividido entre quem acertar, proporcional ao stake — as odds emergem da comunidade.",
+    locksIn: "fecha em",
+    closed: "apostas encerradas",
+    resolvedTag: "resolvido",
+    voidedTag: "anulado (reembolso)",
+    demoTag: "demo",
+    draw: "Empate",
+    inPool: "no pote",
+    stakeLabel: "Stake",
+    betBtn: "Apostar",
+    betting: "Assinando…",
+    betOk: "✅ Aposta feita! O ticket-NFT está na sua carteira.",
+    empty: "Nenhum mercado aberto agora — o servidor cria novos automaticamente.",
+    loading: "Buscando mercados on-chain…",
+    connectFirst: "Conecte a wallet pra apostar.",
+    connect: "Conectar wallet",
+    refresh: "↻ Atualizar",
+    yourPick: "seu palpite",
+    error: "Falha na aposta",
+    serverOffline:
+      "Servidor da API fora do ar — rode `npm run dev` na pasta server/ e recarregue.",
+  },
+
+  walletPage: {
+    docTitle: "Carteira · ChainPlay",
+    title: "Seus tickets",
+    sub: "Cada aposta vira um ticket-NFT na sua wallet. Quem segura o ticket resgata o prêmio.",
+    connect: "Conectar wallet",
+    connecting: "Conectando…",
+    disconnect: "Desconectar",
+    noWallet: "Nenhuma wallet Solana encontrada. Instale Phantom, Backpack ou Solflare.",
+    connectFirst: "Conecte sua wallet para ver seus tickets.",
+    loading: "Buscando seus tickets on-chain…",
+    empty: "Nenhum ticket ainda. Jogue um modo valendo SOL para ganhar o primeiro!",
+    claim: "Resgatar prêmio",
+    claiming: "Resgatando…",
+    claimed: "✓ Resgatado",
+    statusOpen: "em aberto",
+    statusClaimable: "💰 pra resgatar",
+    statusLost: "não foi dessa vez",
+    statusClaimed: "resgatado",
+    stake: "aposta",
+    payout: "prêmio",
+    estPayout: "prêmio estimado",
+    outcomeLabel: (n: number) => `palpite #${n + 1}`,
+    kindRun: "Run Hi-Lo",
+    kindMarket: "Mercado",
+    refresh: "↻ Atualizar",
+    claimError: "Falha no resgate",
+    onchainOff: "Servidor sem modo on-chain ativo no momento.",
+  },
+
+  infinite: {
+    docTitle: "Infinite Hi-Lo · ChainPlay",
+    title: "Infinite Hi-Lo · valendo SOL",
+    sub: "Sem meta fixa: cada acerto sobe um degrau na escada de prêmio. Saque quando quiser — ou arrisque tudo até o topo.",
+    ladderLabel: "Escada de prêmio",
+    rung: (n: number, x: string) => `${n}✓ · ${x}×`,
+    capNote: (n: number, x: string) =>
+      `Topo da escada: ${n} acertos seguidos pagam ${x}× direto do mercado on-chain.`,
+    start: "🎲 Começar run infinita",
+    cashoutBtn: (sol: string) => `💰 CASH OUT ${sol}`,
+    cashoutHint: "sacar encerra a run e garante o prêmio agora",
+    nextRung: (sol: string) => `próximo degrau vale ${sol}`,
+    multiplier: "multiplicador",
+    cashedTitle: "💰 Saque garantido!",
+    cashedSub: (sol: string) =>
+      `Você sacou ${sol}. O lucro já saiu da casa pra sua wallet; o stake volta resgatando o ticket abaixo.`,
+    claimStake: (sol: string) => `🎫 Resgatar o stake (${sol})`,
+    wonTitle: "🏔️ TOPO DA ESCADA!",
+    forfeitZero: "🏳️ Desistir (sem acertos ainda, sem saque)",
+  },
+
+  statsGame: {
+    docTitle: "Guess the Stats · ChainPlay",
+    title: "Guess the Stats",
+    sub: "Crave os números finais da partida antes do lock. Quanto mais perto do placar real, mais pontos no ranking.",
+    locksIn: "fecha em",
+    fields: {
+      goals: "Gols na partida",
+      corners: "Escanteios",
+      yellowCards: "Cartões amarelos",
+      possession: "Posse do mandante (%)",
+    },
+    submit: "📊 Cravar palpite",
+    submitting: "Enviando…",
+    registered: "✅ Palpite registrado! O resultado sai em instantes.",
+    already: "você já palpitou nessa partida",
+    myGuesses: "Seus raios-X",
+    guessCol: "palpite",
+    actualCol: "real",
+    ptsCol: "pts",
+    totalScore: (n: number) => `${n}/100 pontos`,
+    waiting: "aguardando o resultado…",
+    empty: "Nenhuma partida aberta agora — novas entram sozinhas em instantes.",
+    loading: "Buscando partidas…",
+    connectFirst: "Conecte-se pra entrar no ranking (grátis).",
+  },
+
+  survivorGame: {
+    docTitle: "Survivor · ChainPlay",
+    title: "Survivor",
+    sub: "Um pick por rodada, valendo SOL no mercado 1X2. Errou um — está fora da temporada. Até onde você sobrevive?",
+    aliveBadge: "🛡️ vivo",
+    deadBadge: "💀 eliminado",
+    survivedRounds: (n: number) => `${n} rodada(s) sobrevivida(s)`,
+    onlyRemain: (alive: number, total: number) =>
+      `só restam ${alive} de ${total} jogadores vivos`,
+    pickCta: "Fazer meu pick da rodada",
+    pickNote:
+      "O pick é uma aposta parimutuel real: assine o place_bet e o registro vale pra temporada.",
+    picking: "Assinando pick…",
+    picked: "✅ Pick da rodada registrado — sobreviva!",
+    eliminated:
+      "Você foi eliminado nesta temporada. Modo espectador: acompanhe o ranking abaixo.",
+    myPicks: "Seus picks",
+    resultPending: "em jogo",
+    resultSurvived: "sobreviveu",
+    resultEliminated: "eliminado",
+    resultVoid: "anulado (devolvido)",
+    empty: "Nenhum mercado aberto pra pick agora — volte perto do próximo jogo.",
+    loading: "Buscando mercados…",
+    connectFirst: "Conecte a wallet pra entrar na temporada.",
+  },
+
+  arcade: {
+    penalty: {
+      docTitle: "Penalty Predictor · ChainPlay",
+      title: "Penalty Predictor",
+      sub: "Pênalti assinalado! Você tem segundos pra cravar: gol ou defesa? Acertos seguidos multiplicam os pontos.",
+      event: (home: string, away: string, min: number) =>
+        `⚠️ Pênalti para ${home} aos ${min}′ contra ${away}!`,
+      optA: "⚽ GOL",
+      optB: "🧤 DEFESA",
+      start: "🥅 Simular próximo pênalti",
+    },
+    live: {
+      docTitle: "Live Challenge · ChainPlay",
+      title: "Live Challenge",
+      sub: "Desafios relâmpago da partida: gol, escanteio ou cartão nos próximos minutos? Responda antes do tempo acabar.",
+      event: (home: string, away: string, min: number) =>
+        `${home} × ${away} · ${min}′ em andamento`,
+      optA: "✅ SIM",
+      optB: "❌ NÃO",
+      start: "⚡ Próximo desafio",
+    },
+    questions: {
+      penalty: "O batedor converte?",
+      nextGoal: "Sai gol nos próximos 10 minutos?",
+      corner: "Tem escanteio nos próximos 5 minutos?",
+      card: "Alguém leva cartão nos próximos 10 minutos?",
+    },
+    rewardChip: (n: number) => `+${n} pts`,
+    hit: (n: number) => `ACERTOU! +${n} pontos`,
+    miss: "Errou!",
+    tooLate: "⌛ Tempo esgotado!",
+    streakChip: (n: number) => `🔥 sequência ${n}`,
+    next: "Próximo →",
+    demoNote:
+      "Modo demo: eventos simulados com probabilidades reais — o feed ao vivo da TxLINE entra nesta mesma tela.",
+    connectFirst: "Conecte-se pra pontuar no ranking (grátis).",
+    badgeHint: "Acerte um desafio e resgate a NFT de identidade do jogo — grátis.",
+    badgeClaim: "Resgatar NFT do jogo",
+    badgeClaiming: "Emitindo NFT…",
+    badgeOwned: "NFT do jogo na sua carteira ✓",
+  },
+
+  quiz: {
+    docTitle: "Guess the Team · ChainPlay",
+    title: "Guess the Team",
+    sub: "Só as estatísticas na mesa: 5 rodadas pra descobrir qual seleção jogou. Resposta certa só existe no servidor.",
+    start: "🕵️ Começar quiz",
+    roundLabel: (n: number, total: number) => `rodada ${n} de ${total}`,
+    clues: {
+      stage: "Fase",
+      goalsFor: "Gols marcados",
+      goalsAgainst: "Gols sofridos",
+      corners: "Escanteios",
+      yellowCards: "Cartões amarelos",
+      possession: "Posse de bola",
+    },
+    whoPlayed: "Quem jogou assim?",
+    hit: (n: number) => `ACERTOU! +${n} pontos`,
+    missWas: (team: string) => `Era ${team}!`,
+    vsWas: (opp: string) => `(contra ${opp})`,
+    finalScore: (n: number) => `Pontuação final: ${n}`,
+    playAgain: "↻ Jogar de novo",
+    next: "Próxima rodada →",
+    tooLate: "⌛ Tempo esgotado!",
+    connectFirst: "Conecte-se pra pontuar no ranking (grátis).",
+  },
+
+  lb: {
+    title: "🏆 Ranking",
+    empty: "Ninguém pontuou ainda — seja o primeiro!",
+    points: "pts",
+    plays: "jogadas",
+    you: "você",
+  },
+
+  howto: {
+    title: "📖 Como jogar",
+    profitLabel: "De onde vem o prêmio",
+    staked: {
+      steps: [
+        "Escolha a meta de acertos seguidos (3 a 20) e quanto quer apostar — as odds sobem com a meta.",
+        "Assine a aposta na sua wallet: ela vira um ticket-NFT e o SOL entra no vault do mercado on-chain.",
+        "Palpite se a próxima partida tem MAIS ou MENOS que a atual (gols, escanteios, cartões, posse). Empate não quebra a sequência.",
+        "Bateu a meta? O mercado liquida on-chain e você resgata o prêmio com o ticket.",
+      ],
+      profit:
+        "A casa fundeia o prêmio antes de você apostar (odds fixas, ex.: meta 10 paga 6×). Perdeu ou desistiu, o stake fica com a casa — é a margem embutida nas odds.",
+    },
+    infinite: {
+      steps: [
+        "Escolha só o stake — sem meta: cada acerto sobe um degrau na escada (1,2× até 28×).",
+        "Assine a aposta (ticket-NFT no mercado on-chain, igual ao Hi-Lo apostado).",
+        "A cada acerto decida: CASH OUT garante o valor do degrau atual, ou siga pro próximo e arrisque tudo.",
+        "Errou sem sacar = perdeu o stake. Chegou ao 12º degrau = 28× direto do mercado.",
+      ],
+      profit:
+        "Sacando no meio, o mercado é anulado (o ticket devolve seu stake) e a casa paga o lucro do degrau na hora. As odds pagam menos que o justo estatístico — essa é a margem da casa.",
+    },
+    markets: {
+      steps: [
+        "Escolha um jogo futuro da Copa e o stake.",
+        "Aposte em casa, empate ou fora — a aposta vira ticket-NFT e o SOL entra no pote comunitário.",
+        "As % mostram onde a comunidade está apostando (as odds emergem do pote).",
+        "Após o jogo, quem acertou divide o pote proporcional ao stake — resgate na Carteira.",
+      ],
+      profit:
+        "Modelo parimutuel: o prêmio sai do pote dos perdedores. A plataforma fica com a taxa de 10% de cada aposta.",
+    },
+    stats: {
+      steps: [
+        "Antes do lock, crave os números finais: gols, escanteios, cartões e posse.",
+        "Pontos por proximidade (máx 100) alimentam o ranking — de graça.",
+        "Quer valer SOL? Aposte na faixa de gols totais (0–1 / 2–3 / 4+) do mercado parimutuel da partida.",
+        "No reveal, veja o raio-X palpite × real; acertou a faixa, divida o pote e resgate na Carteira.",
+      ],
+      profit:
+        "A camada de pontos é grátis. Na aposta em faixas, o prêmio sai do pote de quem errou; a plataforma fica com a taxa de 10%.",
+    },
+    survivor: {
+      steps: [
+        "Uma rodada = um pick: escolha UM jogo e crave casa, empate ou fora.",
+        "O pick é uma aposta real no mercado 1X2 (assine o place_bet — ticket-NFT na carteira).",
+        "Acertou, sobrevive e avança; jogo anulado devolve o stake e não conta.",
+        "Errou UM pick — eliminado da temporada. Quem sobreviver mais rodadas lidera o ranking.",
+      ],
+      profit:
+        "Cada pick certo também paga como aposta 1X2 normal (divide o pote). A plataforma fica com a taxa de 10% de cada pick.",
+    },
+    penalty: {
+      steps: [
+        "Modo grátis: pênalti simulado, 8 segundos pra cravar GOL ou DEFESA — defesa é rara e vale mais pontos; acertos seguidos multiplicam.",
+        "Valendo SOL: escolha a meta (6, 7 ou 8 acertos em 8 pênaltis) e o stake, e assine a aposta.",
+        "Responda os 8 pênaltis dentro do timer — estourou o tempo, conta como erro.",
+        "Bateu a meta? O mercado liquida on-chain e você resgata o prêmio com o ticket.",
+      ],
+      profit:
+        "A casa fundeia o prêmio antes (6/8 paga 1,3× · 7/8 paga 2,2× · 8/8 paga 7×) e lucra a margem sobre o justo estatístico + o stake das sessões perdidas.",
+    },
+    live: {
+      steps: [
+        "Peça o próximo desafio: gol, escanteio ou cartão nos próximos minutos da partida.",
+        "Responda SIM ou NÃO antes do timer estourar — estourou, conta como erro e a sequência zera.",
+        "Acertos seguidos multiplicam os pontos no ranking.",
+        "Acertou ao menos um desafio? Resgate a NFT de identidade do jogo — grátis, emitida pelo servidor.",
+      ],
+      profit:
+        "Modo 100% grátis: sem aposta, sem stake. A NFT do jogo é um colecionável de identidade — não dá direito a prêmio.",
+    },
+    quiz: {
+      steps: [
+        "São 5 rodadas: em cada uma, o raio-X estatístico de uma seleção numa partida real da Copa.",
+        "Você tem 25 segundos e 4 opções — descubra quem jogou assim.",
+        "Acerto vale 20 pontos + bônus de sequência; a resposta certa só existe no servidor.",
+        "Feche as 5 rodadas e dispute o ranking do jogo.",
+      ],
+      profit:
+        "Modo 100% grátis: sem aposta, sem stake — só pontos e ranking. A versão valendo SOL vem depois, sobre o motor de runs.",
+    },
+  },
+
+  statsBet: {
+    title: "💰 Valendo SOL: faixa de gols totais",
+    buckets: ["0–1 gols", "2–3 gols", "4+ gols"],
+    betOk: "✅ Aposta na faixa feita! Ticket-NFT na sua carteira.",
+    connectFirst: "Conecte a wallet pra apostar nas faixas.",
+  },
+
+  penaltySession: {
+    freeTab: "🎮 Grátis (ranking)",
+    stakedTab: "💰 Valendo SOL",
+    chooseTarget: "Meta de acertos nos 8 pênaltis",
+    targetLabel: (n: number) => `${n} de 8`,
+    start: "🥅 Criar sessão apostada",
+    creating: "Criando mercado on-chain…",
+    progress: (shots: number, total: number, hits: number) =>
+      `pênalti ${Math.min(shots + 1, total)} de ${total} · ${hits} acerto(s)`,
+    needed: (n: number) => `faltam ${n} pra meta`,
+    wonTitle: "🏆 Meta batida!",
+    lostTitle: "💀 Meta perdida!",
+    lostSub: "O stake fica com a casa. Bora de novo?",
+    resume: "Sessão em andamento retomada.",
+  },
 };
 
 export type Dict = typeof pt;
@@ -467,6 +883,8 @@ const en: Dict = {
     howToPlay: "How to play",
     ranking: "Leaderboard",
     history: "History",
+    games: "Games",
+    wallet: "Wallet",
     soon: "soon",
     menuAria: "Open navigation menu",
   },
@@ -893,6 +1311,420 @@ const en: Dict = {
       yellowCards: "yellow cards",
       possession: "% possession",
     },
+  },
+
+  hub: {
+    docTitle: "Games · ChainPlay",
+    title: "Pick your game",
+    sub: "Predictions on real World Cup 2026 data — play for free or stake SOL on devnet.",
+    play: "Play →",
+    playStaked: "💰 Stake SOL",
+    building: "under construction",
+    phaseLabel: (n: number) => `phase ${n}`,
+    games: {
+      hilo: {
+        name: "Hi-Lo",
+        desc: "Will the next match be HIGHER or lower? Defend your streak across all 104 World Cup games.",
+      },
+      markets1x2: {
+        name: "1X2 Markets",
+        desc: "Home, draw or away? Bet into the community pot — winners split it all, proportional to stake.",
+      },
+      infiniteHilo: {
+        name: "Infinite Hi-Lo",
+        desc: "Rotating categories, a growing multiplier and the golden question: ride on or cash out?",
+      },
+      guessStats: {
+        name: "Guess the Stats",
+        desc: "Predict the final numbers before kickoff. The closer you get, the more you score.",
+      },
+      survivor: {
+        name: "Survivor",
+        desc: "One pick per round. One mistake and you're out. How many survive until the final?",
+      },
+      penalty: {
+        name: "Penalty Predictor",
+        desc: "Penalty in the World Cup: you have seconds to call it. Goal or save?",
+      },
+      liveChallenge: {
+        name: "Live Challenge",
+        desc: "Flash challenges during the match: next goal, next corner, a card in the next minutes.",
+      },
+      guessTeam: {
+        name: "Guess the Team",
+        desc: "Only the stats on the table. Can you tell which team played?",
+      },
+    },
+  },
+
+  auth: {
+    title: "Sign in to play for SOL",
+    withWallet: "🔗 Connect wallet",
+    asGuest: "Continue as guest (devnet)",
+    logout: "logout",
+    working: "Signing in…",
+    googleSetupHint:
+      "Google login: set GOOGLE_CLIENT_ID in server/.env and VITE_GOOGLE_CLIENT_ID in client/.env (Google Cloud OAuth Client ID, origin http://localhost:5173).",
+    noWalletHint:
+      "No wallet extension? Use Google or guest mode — we create a devnet custodial account for you.",
+    apiOfflineHint:
+      "API is down — social/guest login unavailable. Connect your wallet (web3 connect): bets go straight on-chain. To restore everything, start the server: cd server && npm run dev.",
+    custodialBadge: (name: string) => `custodial account · ${name}`,
+    custodialBalance: (sol: string) => `balance: ${sol}`,
+    custodialFund: (addr: string) =>
+      `To top up, send devnet SOL to ${addr} (faucet.solana.com).`,
+  },
+
+  staked: {
+    docTitle: "Staked Hi-Lo · ChainPlay",
+    title: "Hi-Lo · staked in SOL",
+    sub: "Pick your streak target, stake on devnet and the house pays if you hit it. The sequence is generated server-side — nobody sees the next number.",
+    chooseTarget: "Streak target",
+    oddsX: (x: string) => `pays ${x}×`,
+    stakeLabel: "Your stake",
+    potential: "Payout if you hit the target",
+    start: "🎲 Create staked run",
+    creating: "Creating on-chain market…",
+    connectFirst: "Connect your wallet to play for SOL.",
+    connect: "Connect wallet",
+    connecting: "Connecting…",
+    betTitle: "Run created! Now sign your bet",
+    betNote: (min: number) =>
+      `You have ${min} min to sign before the market locks. The 10% fee goes to the platform; the rest funds the market vault.`,
+    signBet: (sol: string) => `✍️ Bet ${sol}`,
+    signing: "Waiting for signature…",
+    confirming: "Confirming on-chain…",
+    betExpired: "The betting window expired. Create another run.",
+    progressLabel: (n: number, target: number) => `hits ${n} of ${target}`,
+    cashout: "🏳️ Forfeit run",
+    wonTitle: "🏆 Target hit!",
+    wonSub: (sol: string) => `The house owes you ${sol}. Waiting for on-chain settlement…`,
+    settling: "settling the market on-chain…",
+    claimBtn: (sol: string) => `💰 Claim ${sol}`,
+    claiming: "Claiming…",
+    claimedMsg: "Prize in your wallet! 🎉",
+    lostTitle: "💀 Run over!",
+    lostSub: "The stake stays with the house. Run it back?",
+    expiredTitle: "⌛ Run expired",
+    playAgain: "↻ New run",
+    seeWallet: "See my tickets →",
+    error: "Something went wrong",
+    devnetNote: "Devnet SOL — no real value. Grab some at faucet.solana.com.",
+    bettingAs: (name: string) => `Betting as ${name}`,
+    balanceLabel: "balance",
+    insufficient: (stake: string) =>
+      `Not enough balance to stake ${stake} — grab devnet SOL at faucet.solana.com.`,
+  },
+
+  markets: {
+    docTitle: "1X2 Markets · ChainPlay",
+    title: "World Cup markets",
+    sub: "Bet on the result (home · draw · away). The pot is split among winners, proportional to stake — odds emerge from the crowd.",
+    locksIn: "locks in",
+    closed: "betting closed",
+    resolvedTag: "resolved",
+    voidedTag: "voided (refund)",
+    demoTag: "demo",
+    draw: "Draw",
+    inPool: "in the pot",
+    stakeLabel: "Stake",
+    betBtn: "Bet",
+    betting: "Signing…",
+    betOk: "✅ Bet placed! The ticket-NFT is in your wallet.",
+    empty: "No open markets right now — the server creates new ones automatically.",
+    loading: "Fetching on-chain markets…",
+    connectFirst: "Connect your wallet to bet.",
+    connect: "Connect wallet",
+    refresh: "↻ Refresh",
+    yourPick: "your pick",
+    error: "Bet failed",
+    serverOffline:
+      "API server is down — run `npm run dev` inside server/ and reload.",
+  },
+
+  walletPage: {
+    docTitle: "Wallet · ChainPlay",
+    title: "Your tickets",
+    sub: "Every bet becomes a ticket-NFT in your wallet. Whoever holds the ticket claims the prize.",
+    connect: "Connect wallet",
+    connecting: "Connecting…",
+    disconnect: "Disconnect",
+    noWallet: "No Solana wallet found. Install Phantom, Backpack or Solflare.",
+    connectFirst: "Connect your wallet to see your tickets.",
+    loading: "Fetching your tickets on-chain…",
+    empty: "No tickets yet. Play a staked mode to earn your first one!",
+    claim: "Claim prize",
+    claiming: "Claiming…",
+    claimed: "✓ Claimed",
+    statusOpen: "open",
+    statusClaimable: "💰 ready to claim",
+    statusLost: "not this time",
+    statusClaimed: "claimed",
+    stake: "stake",
+    payout: "payout",
+    estPayout: "estimated payout",
+    outcomeLabel: (n: number) => `pick #${n + 1}`,
+    kindRun: "Hi-Lo Run",
+    kindMarket: "Market",
+    refresh: "↻ Refresh",
+    claimError: "Claim failed",
+    onchainOff: "Server is running without on-chain mode right now.",
+  },
+
+  infinite: {
+    docTitle: "Infinite Hi-Lo · ChainPlay",
+    title: "Infinite Hi-Lo · staked",
+    sub: "No fixed target: every hit climbs a rung on the prize ladder. Cash out any time — or risk it all to the top.",
+    ladderLabel: "Prize ladder",
+    rung: (n: number, x: string) => `${n}✓ · ${x}×`,
+    capNote: (n: number, x: string) =>
+      `Top of the ladder: ${n} hits in a row pay ${x}× straight from the on-chain market.`,
+    start: "🎲 Start infinite run",
+    cashoutBtn: (sol: string) => `💰 CASH OUT ${sol}`,
+    cashoutHint: "cashing out ends the run and locks your prize now",
+    nextRung: (sol: string) => `next rung is worth ${sol}`,
+    multiplier: "multiplier",
+    cashedTitle: "💰 Cashed out!",
+    cashedSub: (sol: string) =>
+      `You secured ${sol}. The profit already left the house to your wallet; reclaim your stake with the ticket below.`,
+    claimStake: (sol: string) => `🎫 Reclaim stake (${sol})`,
+    wonTitle: "🏔️ TOP OF THE LADDER!",
+    forfeitZero: "🏳️ Give up (no hits yet, nothing to cash out)",
+  },
+
+  statsGame: {
+    docTitle: "Guess the Stats · ChainPlay",
+    title: "Guess the Stats",
+    sub: "Call the final numbers before lock. The closer to the real stats, the more ranking points.",
+    locksIn: "locks in",
+    fields: {
+      goals: "Goals in the match",
+      corners: "Corners",
+      yellowCards: "Yellow cards",
+      possession: "Home possession (%)",
+    },
+    submit: "📊 Lock my call",
+    submitting: "Sending…",
+    registered: "✅ Prediction in! Results reveal shortly.",
+    already: "you already predicted this match",
+    myGuesses: "Your match X-rays",
+    guessCol: "your call",
+    actualCol: "actual",
+    ptsCol: "pts",
+    totalScore: (n: number) => `${n}/100 points`,
+    waiting: "waiting for the result…",
+    empty: "No matches open right now — new ones roll in automatically.",
+    loading: "Fetching matches…",
+    connectFirst: "Sign in to join the leaderboard (free).",
+  },
+
+  survivorGame: {
+    docTitle: "Survivor · ChainPlay",
+    title: "Survivor",
+    sub: "One pick per round, staked on the 1X2 market. One miss — you're out for the season. How long can you survive?",
+    aliveBadge: "🛡️ alive",
+    deadBadge: "💀 eliminated",
+    survivedRounds: (n: number) => `${n} round(s) survived`,
+    onlyRemain: (alive: number, total: number) =>
+      `only ${alive} of ${total} players still alive`,
+    pickCta: "Make my pick for this round",
+    pickNote:
+      "A pick is a real parimutuel bet: sign the place_bet and it counts for the season.",
+    picking: "Signing pick…",
+    picked: "✅ Round pick locked — survive!",
+    eliminated:
+      "You were eliminated this season. Spectator mode: follow the ranking below.",
+    myPicks: "Your picks",
+    resultPending: "in play",
+    resultSurvived: "survived",
+    resultEliminated: "eliminated",
+    resultVoid: "voided (refunded)",
+    empty: "No markets open for picks right now — come back near the next match.",
+    loading: "Fetching markets…",
+    connectFirst: "Connect your wallet to join the season.",
+  },
+
+  arcade: {
+    penalty: {
+      docTitle: "Penalty Predictor · ChainPlay",
+      title: "Penalty Predictor",
+      sub: "Penalty awarded! You have seconds to call it: goal or save? Consecutive hits multiply your points.",
+      event: (home: string, away: string, min: number) =>
+        `⚠️ Penalty for ${home} at ${min}′ against ${away}!`,
+      optA: "⚽ GOAL",
+      optB: "🧤 SAVE",
+      start: "🥅 Simulate next penalty",
+    },
+    live: {
+      docTitle: "Live Challenge · ChainPlay",
+      title: "Live Challenge",
+      sub: "Flash challenges from the match: goal, corner or card in the next minutes? Answer before time runs out.",
+      event: (home: string, away: string, min: number) =>
+        `${home} × ${away} · ${min}′ in play`,
+      optA: "✅ YES",
+      optB: "❌ NO",
+      start: "⚡ Next challenge",
+    },
+    questions: {
+      penalty: "Does the taker convert?",
+      nextGoal: "A goal in the next 10 minutes?",
+      corner: "A corner in the next 5 minutes?",
+      card: "A card in the next 10 minutes?",
+    },
+    rewardChip: (n: number) => `+${n} pts`,
+    hit: (n: number) => `NAILED IT! +${n} points`,
+    miss: "Missed!",
+    tooLate: "⌛ Time's up!",
+    streakChip: (n: number) => `🔥 streak ${n}`,
+    next: "Next →",
+    demoNote:
+      "Demo mode: simulated events with realistic probabilities — the TxLINE live feed plugs into this same screen.",
+    connectFirst: "Sign in to score on the leaderboard (free).",
+    badgeHint: "Hit a challenge and claim the game's identity NFT — free.",
+    badgeClaim: "Claim game NFT",
+    badgeClaiming: "Minting NFT…",
+    badgeOwned: "Game NFT in your wallet ✓",
+  },
+
+  quiz: {
+    docTitle: "Guess the Team · ChainPlay",
+    title: "Guess the Team",
+    sub: "Only the stats on the table: 5 rounds to figure out which national team played. The answer lives server-side only.",
+    start: "🕵️ Start quiz",
+    roundLabel: (n: number, total: number) => `round ${n} of ${total}`,
+    clues: {
+      stage: "Stage",
+      goalsFor: "Goals scored",
+      goalsAgainst: "Goals conceded",
+      corners: "Corners",
+      yellowCards: "Yellow cards",
+      possession: "Possession",
+    },
+    whoPlayed: "Who played like this?",
+    hit: (n: number) => `NAILED IT! +${n} points`,
+    missWas: (team: string) => `It was ${team}!`,
+    vsWas: (opp: string) => `(against ${opp})`,
+    finalScore: (n: number) => `Final score: ${n}`,
+    playAgain: "↻ Play again",
+    next: "Next round →",
+    tooLate: "⌛ Time's up!",
+    connectFirst: "Sign in to score on the leaderboard (free).",
+  },
+
+  lb: {
+    title: "🏆 Leaderboard",
+    empty: "Nobody scored yet — be the first!",
+    points: "pts",
+    plays: "plays",
+    you: "you",
+  },
+
+  howto: {
+    title: "📖 How to play",
+    profitLabel: "Where the prize comes from",
+    staked: {
+      steps: [
+        "Pick a streak target (3 to 20) and your stake — odds grow with the target.",
+        "Sign the bet in your wallet: it becomes a ticket-NFT and the SOL goes into the on-chain market vault.",
+        "Guess if the next match has MORE or LESS than the current one (goals, corners, cards, possession). Ties don't break your streak.",
+        "Hit the target? The market settles on-chain and you claim the prize with your ticket.",
+      ],
+      profit:
+        "The house funds the prize before you bet (fixed odds, e.g. target 10 pays 6×). Lose or give up and the stake stays with the house — that's the margin built into the odds.",
+    },
+    infinite: {
+      steps: [
+        "Choose only the stake — no target: every hit climbs a rung on the ladder (1.2× up to 28×).",
+        "Sign the bet (ticket-NFT on the on-chain market, same as staked Hi-Lo).",
+        "After every hit decide: CASH OUT locks the current rung, or push to the next and risk it all.",
+        "Miss before cashing out = stake lost. Reach rung 12 = 28× straight from the market.",
+      ],
+      profit:
+        "Cashing out mid-ladder voids the market (the ticket refunds your stake) and the house pays the rung profit instantly. Odds pay below the statistical fair value — that's the house margin.",
+    },
+    markets: {
+      steps: [
+        "Pick an upcoming World Cup match and your stake.",
+        "Bet home, draw or away — the bet becomes a ticket-NFT and the SOL joins the community pool.",
+        "The % show where the community is betting (odds emerge from the pool).",
+        "After the match, winners split the pool pro-rata — claim in your Wallet.",
+      ],
+      profit:
+        "Parimutuel model: prizes come from the losers' pool. The platform keeps a 10% fee per bet.",
+    },
+    stats: {
+      steps: [
+        "Before lock, call the final numbers: goals, corners, cards and possession.",
+        "Proximity points (max 100) feed the leaderboard — for free.",
+        "Want SOL on it? Bet on the total-goals bucket (0–1 / 2–3 / 4+) of the match's parimutuel market.",
+        "At reveal, check your call × actual X-ray; hit the bucket, split the pool and claim in your Wallet.",
+      ],
+      profit:
+        "The points layer is free. On bucket bets the prize comes from the losing buckets; the platform keeps the 10% fee.",
+    },
+    survivor: {
+      steps: [
+        "One round = one pick: choose ONE match and call home, draw or away.",
+        "The pick is a real bet on the 1X2 market (sign the place_bet — ticket-NFT in your wallet).",
+        "Correct pick survives and advances; voided matches refund and don't count.",
+        "Miss ONE pick — eliminated for the season. Most rounds survived leads the ranking.",
+      ],
+      profit:
+        "Each correct pick also pays as a normal 1X2 bet (splits the pool). The platform keeps the 10% fee per pick.",
+    },
+    penalty: {
+      steps: [
+        "Free mode: simulated penalty, 8 seconds to call GOAL or SAVE — saves are rare and worth more; consecutive hits multiply.",
+        "Staked: choose the target (6, 7 or 8 hits out of 8 penalties) and stake, and sign the bet.",
+        "Answer all 8 penalties within the timer — running out counts as a miss.",
+        "Hit the target? The market settles on-chain and you claim the prize with your ticket.",
+      ],
+      profit:
+        "The house funds the prize upfront (6/8 pays 1.3× · 7/8 pays 2.2× · 8/8 pays 7×) and earns the margin over fair value plus the stake of lost sessions.",
+    },
+    live: {
+      steps: [
+        "Request the next challenge: goal, corner or card in the next minutes of the match.",
+        "Answer YES or NO before the timer runs out — too late counts as a miss and resets the streak.",
+        "Consecutive hits multiply your leaderboard points.",
+        "Hit at least one challenge? Claim the game's identity NFT — free, minted by the server.",
+      ],
+      profit:
+        "Fully free mode: no bet, no stake. The game NFT is an identity collectible — it grants no prize.",
+    },
+    quiz: {
+      steps: [
+        "5 rounds: each shows the statistical X-ray of a national team in a real World Cup match.",
+        "You have 25 seconds and 4 options — figure out who played like that.",
+        "A hit is worth 20 points + streak bonus; the right answer only exists on the server.",
+        "Finish all 5 rounds and climb the game leaderboard.",
+      ],
+      profit:
+        "Fully free mode: no bet, no stake — just points and ranking. The SOL-staked version comes later, on top of the runs engine.",
+    },
+  },
+
+  statsBet: {
+    title: "💰 Staked: total goals bucket",
+    buckets: ["0–1 goals", "2–3 goals", "4+ goals"],
+    betOk: "✅ Bucket bet placed! Ticket-NFT in your wallet.",
+    connectFirst: "Connect your wallet to bet on buckets.",
+  },
+
+  penaltySession: {
+    freeTab: "🎮 Free (ranking)",
+    stakedTab: "💰 Staked",
+    chooseTarget: "Hit target across the 8 penalties",
+    targetLabel: (n: number) => `${n} of 8`,
+    start: "🥅 Create staked session",
+    creating: "Creating on-chain market…",
+    progress: (shots: number, total: number, hits: number) =>
+      `penalty ${Math.min(shots + 1, total)} of ${total} · ${hits} hit(s)`,
+    needed: (n: number) => `${n} to go for the target`,
+    wonTitle: "🏆 Target hit!",
+    lostTitle: "💀 Target missed!",
+    lostSub: "The stake stays with the house. Run it back?",
+    resume: "Ongoing session resumed.",
   },
 };
 
