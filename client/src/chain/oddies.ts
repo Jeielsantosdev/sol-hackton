@@ -42,7 +42,13 @@ export async function getConnection(): Promise<Connection> {
   } catch {
     /* fica no default devnet */
   }
-  connection = new Connection(rpcUrl, "confirmed");
+  // HTTP JSON-RPC via proxy same-origin do server: o RPC público da devnet
+  // bloqueia/limita browsers (aparece como "CORS failure" intermitente).
+  // Confirmações via WebSocket seguem direto no RPC — WS não tem CORS.
+  connection = new Connection(new URL("/api/rpc", window.location.origin).toString(), {
+    commitment: "confirmed",
+    wsEndpoint: rpcUrl.replace(/^http/, "ws"),
+  });
   return connection;
 }
 
@@ -159,7 +165,13 @@ export async function placeBet(
   const market = marketPda(marketId);
   const [config, marketAcc] = await Promise.all([
     (program.account as any).config.fetch(configPda()),
-    (program.account as any).market.fetch(market),
+    // decode falha em market de layout antigo (pré-upgrade do programa) — o
+    // erro cru do buffer-layout ("clo is null") não diz nada pro jogador
+    (program.account as any).market.fetch(market).catch(() => {
+      throw new Error(
+        "esse mercado é de uma versão antiga do programa e não aceita mais apostas — escolha outro"
+      );
+    }),
   ]);
 
   const ticketMint = Keypair.generate();

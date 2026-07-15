@@ -10,6 +10,7 @@ import { gameRoutes } from "./http/routes/game.routes.js";
 import { marketsRoutes } from "./http/routes/markets.routes.js";
 import { nftRoutes } from "./http/routes/nft.routes.js";
 import { quizRoutes } from "./http/routes/quiz.routes.js";
+import { rpcRoutes } from "./http/routes/rpc.routes.js";
 import { runsRoutes } from "./http/routes/runs.routes.js";
 import { statsRoutes } from "./http/routes/stats.routes.js";
 import { survivorRoutes } from "./http/routes/survivor.routes.js";
@@ -36,6 +37,8 @@ export function createApp(): express.Express {
   app.use("/api/survivor", survivorRoutes);
   app.use("/api/arcade", arcadeRoutes);
   app.use("/api/quiz", quizRoutes);
+  // JSON-RPC same-origin: o browser não fala direto com o RPC público (CORS/429)
+  app.use("/api/rpc", rpcRoutes);
   // arte + metadata Metaplex das NFTs de identidade dos jogos
   app.use("/nft", nftRoutes);
 

@@ -56,6 +56,10 @@ interface WalletCtx {
 const Ctx = createContext<WalletCtx | null>(null);
 
 const RPC_URL = "https://api.devnet.solana.com";
+// HTTP pelo proxy same-origin do server (o RPC público limita browsers — vira
+// "CORS failure"); WebSocket segue direto, WS não tem CORS. Igual ao oddies.ts.
+const RPC_PROXY = `${window.location.origin}/api/rpc`;
+const RPC_WS = RPC_URL.replace(/^http/, "ws");
 
 /** Provider Solana injetado direto na página (fora do Wallet Standard):
  *  MetaMask com suporte a Solana, forks e wallets antigas. É o fallback
@@ -308,7 +312,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <ConnectionProvider endpoint={RPC_URL}>
+    <ConnectionProvider
+      endpoint={RPC_PROXY}
+      config={{ commitment: "confirmed", wsEndpoint: RPC_WS }}
+    >
       <AdapterWalletProvider
         wallets={wallets}
         autoConnect
