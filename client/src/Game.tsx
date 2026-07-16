@@ -7,7 +7,7 @@ import {
   type StatCategory,
 } from "./types";
 import { useLang } from "./i18n";
-import Navbar from "./Navbar";
+import BackBar from "./BackBar";
 import {
   MatchCard,
   ResultBanner,
@@ -267,16 +267,7 @@ export default function Game() {
 
   return (
     <div className="game-page">
-      <Navbar
-        links={[
-          { label: t.nav.home, href: "#/" },
-          { label: t.nav.games, href: "#/jogos" },
-          { label: t.nav.wallet, href: "#/carteira" },
-          { label: t.nav.howToPlay, onClick: () => setShowHelp(true) },
-          { label: t.nav.ranking, soon: true },
-        ]}
-        cta={{ label: t.game.playAgain, onClick: restart }}
-      />
+      <BackBar />
 
       <div className="shell">
       {/* pergunta principal em primeiro: a decisão é o protagonista da tela */}
@@ -289,6 +280,15 @@ export default function Game() {
           {t.game.questionTitle(t.game.categoryLabels[category])}
         </h1>
         <p className="game-sub">{t.game.categoryQuestion(currentValue, unit)}</p>
+        {/* ações do jogo migradas do navbar pra dentro da tela */}
+        <div className="game-toolbar">
+          <button className="btn small ghost" onClick={() => setShowHelp(true)}>
+            {t.nav.howToPlay}
+          </button>
+          <button className="btn small ghost" onClick={restart}>
+            {t.game.playAgain}
+          </button>
+        </div>
       </header>
 
       <div className="cards">

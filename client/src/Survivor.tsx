@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import Navbar from "./Navbar";
+import BackBar from "./BackBar";
 import { useLang } from "./i18n";
 import { LoginPanel, useAccount, useAccountCta } from "./chain/account";
 import { api } from "./chain/http";
@@ -157,13 +157,8 @@ export default function Survivor() {
 
   return (
     <div className="game-page">
-      <Navbar
-        links={[
-          { label: t.nav.home, href: "#/" },
-          { label: t.nav.games, href: "#/jogos" },
-          { label: t.nav.wallet, href: "#/carteira" },
-        ]}
-        cta={
+      <BackBar
+        action={
           accountCta ?? {
             label: account.busy ? t.staked.connecting : t.staked.connect,
             onClick: () => account.connectWallet(),

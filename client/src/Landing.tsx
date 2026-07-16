@@ -415,8 +415,8 @@ export default function Landing() {
           { label: t.nav.minigames, href: "#minigames" },
           { label: t.nav.how, href: "#get-started" },
         ]}
-        secondaryCta={{ label: t.nav.signup, href: "#/jogar" }}
-        cta={{ label: t.nav.play, href: "#/jogar" }}
+        secondaryCta={{ label: t.nav.signup, href: "#/jogos" }}
+        cta={{ label: t.nav.play, href: "#/jogos" }}
       />
 
       {/* display: contents preserva o layout flex de .landing */}
@@ -433,7 +433,7 @@ export default function Landing() {
             </h1>
             <p className="hero-sub">{t.hero.heroSub}</p>
             <div className="hero-actions">
-              <a className="btn primary big" href="#/jogar">
+              <a className="btn primary big" href="#/jogos">
                 {t.hero.heroCtaStart}
               </a>
               <a className="btn ghost big" href="#como-funciona">

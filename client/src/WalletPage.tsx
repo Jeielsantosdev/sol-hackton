@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import Navbar from "./Navbar";
+import BackBar from "./BackBar";
 import { useLang } from "./i18n";
 import { LoginPanel, useAccount, useAccountCta } from "./chain/account";
 import { ApiError, api } from "./chain/http";
@@ -88,13 +88,8 @@ export default function WalletPage() {
 
   return (
     <div className="game-page">
-      <Navbar
-        links={[
-          { label: t.nav.home, href: "#/" },
-          { label: t.nav.games, href: "#/jogos" },
-          { label: t.nav.wallet, href: "#/carteira", active: true },
-        ]}
-        cta={
+      <BackBar
+        action={
           accountCta ?? {
             label: account.busy ? t.walletPage.connecting : t.walletPage.connect,
             onClick: () => account.connectWallet(),
