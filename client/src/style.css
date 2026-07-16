@@ -4101,3 +4101,725 @@ a.game-card:hover {
   margin: 4px 0 2px;
   color: var(--mint);
 }
+
+/* ---------- Hi-Lo redesign: palco, escada, mascote e HUD ---------- */
+
+/* hero do Infinite: badge, título grande e tagline de conversão */
+.hilo-hero {
+  gap: 12px;
+}
+
+.hilo-hero-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  color: var(--brand);
+  border: 1px solid rgba(198, 240, 78, 0.35);
+  background: rgba(198, 240, 78, 0.07);
+}
+
+.hilo-hero .game-question {
+  font-size: 2.5rem;
+  letter-spacing: -0.03em;
+}
+
+.hilo-hero .game-sub {
+  max-width: 560px;
+  line-height: 1.55;
+}
+
+/* tutorial visual: o loop do jogo em 5 chips encadeados */
+.hilo-steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 auto 18px;
+  padding: 0;
+  list-style: none;
+  max-width: 860px;
+}
+
+.hilo-steps li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--surface);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.hilo-steps li:not(:last-child)::after {
+  content: "→";
+  margin-left: 6px;
+  margin-right: -4px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.hilo-step-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--brand-ink);
+  background: var(--brand);
+}
+
+/* palco: superfície única que agrupa setup/final, com o brilho da marca */
+.hilo-stage {
+  position: relative;
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto 20px;
+  padding: 26px 28px;
+  background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.025),
+      rgba(255, 255, 255, 0) 40%
+    ),
+    var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35);
+  text-align: left;
+}
+
+.hilo-stage::before {
+  content: "";
+  position: absolute;
+  inset: -40px;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    50% 60% at 50% 40%,
+    rgba(198, 240, 78, 0.06),
+    transparent 75%
+  );
+}
+
+/* escada em largura total no topo do palco, separada do corpo do setup */
+.hilo-ladder-field {
+  padding-bottom: 18px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* setup: mascote apresenta, painel decide */
+.hilo-setup {
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  gap: 30px;
+  align-items: center;
+}
+
+.hilo-mascot-col {
+  display: flex;
+  justify-content: center;
+  align-self: center;
+}
+
+.hilo-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.hilo-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* mesmo vocabulário dos labels do scoreboard/cards */
+.hilo-field-label {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hilo-footnote {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.hilo-panel .stake-row {
+  justify-content: flex-start;
+}
+
+.hilo-panel .staked-cta {
+  width: 100%;
+  min-width: 0;
+  padding: 16px 24px;
+  font-size: 1.05rem;
+  box-shadow: 0 8px 26px rgba(198, 240, 78, 0.22);
+  transition: background 0.15s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.hilo-panel .staked-cta:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 12px 34px rgba(198, 240, 78, 0.35);
+}
+
+.hilo-panel .staked-cta:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
+  box-shadow: 0 6px 18px rgba(198, 240, 78, 0.25);
+}
+
+/* chips de stake: seleção com pop e preenchimento da marca */
+.hilo-panel .stake-chip {
+  transition: border-color 0.16s ease, background 0.16s ease,
+    color 0.16s ease, transform 0.16s ease;
+}
+
+.hilo-panel .stake-chip:hover:not(.selected) {
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+.hilo-panel .stake-chip.selected {
+  border-color: var(--brand);
+  background: rgba(198, 240, 78, 0.12);
+  color: var(--brand);
+  transform: scale(1.05);
+}
+
+/* estados desabilitados legíveis: CTA apagado sinaliza que falta algo */
+.hilo-panel .staked-cta:disabled,
+.hilo-final .primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.hilo-panel .betting-as,
+.hilo-panel .devnet-note {
+  margin: 0;
+}
+
+/* ---------- mascote: mesma arte, humor via CSS ---------- */
+
+.hilo-mascot {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.hilo-mascot img {
+  width: 200px;
+  max-width: 100%;
+  filter: drop-shadow(0 14px 26px rgba(0, 0, 0, 0.5));
+  animation: mascot-bob 3.2s ease-in-out infinite;
+  transition: filter 0.3s ease, transform 0.3s ease;
+}
+
+/* no setup o calango se inclina de leve pro painel, guiando o olhar
+   (propriedade `rotate` compõe com o translateY da animação de bob) */
+.hilo-setup .hilo-mascot img {
+  rotate: 2deg;
+}
+
+.hilo-mascot.compact img {
+  width: 88px;
+}
+
+.hilo-mascot.mood-cheer img {
+  animation: mascot-cheer 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hilo-mascot.mood-sad img {
+  animation: none;
+  filter: grayscale(0.55) brightness(0.85) drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5));
+  transform: rotate(-5deg) translateY(4px);
+}
+
+.hilo-mascot.mood-suspense img {
+  animation: mascot-shiver 0.4s linear infinite;
+}
+
+.mascot-bubble {
+  position: relative;
+  max-width: 250px;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--text-2);
+  text-align: center;
+}
+
+/* rabinho do balão apontando pro calango */
+.mascot-bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 10px;
+  height: 10px;
+  transform: translateX(-50%) rotate(45deg);
+  background: var(--surface-2);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+@keyframes mascot-bob {
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+@keyframes mascot-cheer {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  35% {
+    transform: translateY(-20px) scale(1.06) rotate(3deg);
+  }
+  70% {
+    transform: translateY(0) scale(0.97);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes mascot-shiver {
+  25% {
+    transform: translateX(-2px) rotate(-1deg);
+  }
+  75% {
+    transform: translateX(2px) rotate(1deg);
+  }
+}
+
+/* ---------- escada de prêmio: trilho horizontal com progresso ---------- */
+
+.ladder-rail {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  width: 100%;
+  max-width: 860px;
+  overflow-x: auto;
+  padding: 4px 2px 10px;
+  scrollbar-width: thin;
+}
+
+/* cada degrau sobe um pouco mais que o anterior: escada, não filtro */
+.rail-rung {
+  position: relative;
+  flex: 0 0 auto;
+  min-width: 58px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 8px;
+  margin-bottom: calc((var(--i, 1) - 1) * 3px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+/* trilho conectando os degraus */
+.rail-rung:not(:first-child)::before {
+  content: "";
+  position: absolute;
+  right: 100%;
+  bottom: 18px;
+  width: 11px;
+  height: 2px;
+  background: var(--border);
+}
+
+.rail-rung.done:not(:first-child)::before,
+.rail-rung.current:not(:first-child)::before {
+  background: rgba(198, 240, 78, 0.55);
+}
+
+.rung-mult {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.rung-step {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* degrau já subido */
+.rail-rung.done {
+  border-color: rgba(198, 240, 78, 0.45);
+  background: rgba(198, 240, 78, 0.08);
+}
+
+.rail-rung.done .rung-mult,
+.rail-rung.done .rung-step {
+  color: var(--brand);
+}
+
+/* degrau atual: onde o prêmio está garantido */
+.rail-rung.current {
+  border-color: var(--brand);
+  box-shadow: 0 0 20px rgba(198, 240, 78, 0.3);
+  transform: scale(1.06);
+}
+
+.rail-rung.current .rung-mult {
+  color: var(--brand);
+  font-size: 0.95rem;
+}
+
+/* próximo degrau: o alvo da rodada respira */
+.rail-rung.next {
+  animation: rung-next 1.8s ease-in-out infinite;
+}
+
+/* topo da escada: o pote de ouro */
+.rail-rung.cap .rung-mult {
+  color: var(--amber);
+}
+
+.rung-here {
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brand);
+  white-space: nowrap;
+}
+
+@keyframes rung-next {
+  50% {
+    border-color: rgba(198, 240, 78, 0.6);
+    box-shadow: 0 0 12px rgba(198, 240, 78, 0.16);
+  }
+}
+
+/* ---------- resumo da aposta (config) ---------- */
+
+.hilo-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.5fr;
+  gap: 1px;
+  margin: 0;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.hilo-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  background: var(--surface-2);
+}
+
+.hilo-summary dt {
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hilo-summary dd {
+  margin: 0;
+  font-size: 1.12rem;
+  font-weight: 700;
+}
+
+/* o prêmio é o protagonista do resumo: maior, verde e com fundo próprio */
+.hilo-summary > .hilo-summary-prize {
+  background: linear-gradient(
+      180deg,
+      rgba(198, 240, 78, 0.09),
+      rgba(198, 240, 78, 0.03)
+    ),
+    var(--surface-2);
+}
+
+.hilo-summary-prize dt {
+  color: rgba(198, 240, 78, 0.75);
+}
+
+.hilo-summary-prize dd {
+  color: var(--brand);
+  font-size: 1.7rem;
+  line-height: 1.1;
+  text-shadow: 0 0 24px rgba(198, 240, 78, 0.25);
+}
+
+/* ---------- HUD da run: sequência, multiplicador, garantido, prêmio ---------- */
+
+.hilo-play {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+}
+
+.hilo-hud {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.hilo-hud > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 24px;
+}
+
+.hilo-hud > div + div {
+  border-left: 1px solid var(--border);
+}
+
+.hilo-hud .label {
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hilo-hud strong {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+/* o valor que o cash out garante agora — dourado como o botão de saque */
+.hilo-hud-secured strong {
+  color: var(--amber);
+}
+
+.hilo-cashout-hint {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+/* mascote assistindo a run, embaixo dos botões de palpite */
+.hilo-play-mascot {
+  grid-column: 2;
+  display: flex;
+  justify-content: center;
+  margin-top: -4px;
+}
+
+/* ---------- countdown da janela de assinatura ---------- */
+
+.hilo-countdown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  max-width: 320px;
+  margin: 8px auto 14px;
+}
+
+.hilo-countdown-label {
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hilo-countdown-time {
+  font-size: 1.7rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.hilo-countdown-bar {
+  width: 100%;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.hilo-countdown-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 9999px;
+  background: var(--brand);
+  transform-origin: left center;
+  transition: transform 1s linear;
+}
+
+/* ---------- telas finais: vitória, saque, derrota ---------- */
+
+.hilo-final {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 26px;
+  align-items: center;
+  max-width: 640px;
+}
+
+.hilo-final .hilo-mascot img {
+  width: 150px;
+}
+
+.hilo-final-body h2 {
+  margin: 0 0 8px;
+  letter-spacing: -0.02em;
+}
+
+.hilo-final-body > p {
+  margin: 0 0 14px;
+  color: var(--text-2);
+}
+
+.hilo-final-body .endgame-actions {
+  justify-content: flex-start;
+  margin-top: 14px;
+}
+
+.hilo-final.is-win {
+  border-color: rgba(198, 240, 78, 0.4);
+  box-shadow: 0 0 44px rgba(198, 240, 78, 0.07);
+}
+
+.hilo-final.is-loss {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* ---------- spinners de processamento ---------- */
+
+.hilo-btn-loading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.hilo-spinner {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  opacity: 0.8;
+  animation: hilo-spin 0.7s linear infinite;
+}
+
+.hilo-settling {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+@keyframes hilo-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* ---------- responsivo ---------- */
+
+@media (max-width: 860px) {
+  .hilo-setup {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .hilo-mascot-col {
+    align-self: center;
+  }
+
+  .hilo-setup .hilo-mascot img {
+    width: 130px;
+  }
+
+  .hilo-panel .stake-row {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 640px) {
+  .hilo-stage {
+    padding: 20px 16px;
+  }
+
+  .hilo-final {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .hilo-final .hilo-mascot img {
+    width: 110px;
+  }
+
+  .hilo-final-body .endgame-actions {
+    justify-content: center;
+  }
+
+  /* no mobile .cards vira coluna única: o mascote entra no fluxo */
+  .hilo-play-mascot {
+    grid-column: auto;
+    order: 4;
+  }
+
+  .hilo-hud > div {
+    padding: 10px 14px;
+  }
+
+  .hilo-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hilo-mascot img,
+  .hilo-mascot.mood-cheer img,
+  .hilo-mascot.mood-suspense img,
+  .rail-rung.next {
+    animation: none;
+  }
+
+  .hilo-countdown-fill {
+    transition: none;
+  }
+}
