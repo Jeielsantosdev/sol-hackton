@@ -11,20 +11,22 @@ interface GameEntry {
   href?: string;
   /** segundo modo jogável (ex.: valendo SOL) */
   hrefStaked?: string;
+  /** marca o jogo como "em breve": card fica esmaecido, com tag e sem clique */
+  soon?: boolean;
   /** fase do roadmap (docs/plano-minigames.md) — sem href = ainda não jogável */
   phase: number;
 }
 
 // Ordem do carrossel = ordem de entrega do plano: o jogável vem primeiro.
 const GAMES: GameEntry[] = [
-  { id: "hilo", icon: "🎯", art: "/imgs/hi-lo.png", href: "#/jogar", hrefStaked: "#/hilo-apostado", phase: 1 },
-  { id: "guessStats", icon: "📊", art: "/imgs/5d0fa936-fb1d-4961-b284-4dd2c0353bf7.png", href: "#/stats", phase: 2 },
   { id: "infiniteHilo", icon: "♾️", art: "/imgs/4332d254-f3f2-451d-b5a3-5f1fb6df21a1.jpeg", href: "#/hilo-infinito", phase: 1 },
-  { id: "penalty", icon: "🥅", art: "/imgs/014b4183-2f88-408c-9b03-7495670a06e3.jpeg", href: "#/penalty", phase: 4 },
-  { id: "liveChallenge", icon: "⚡", art: "/imgs/game-live.jpg", href: "#/live", phase: 5 },
-  { id: "guessTeam", icon: "🕵️", art: "/imgs/1fa81539-5fe0-447d-8671-13aaa0d8c75c.jpeg", href: "#/team", phase: 5 },
-  { id: "survivor", icon: "🛡️", art: "/imgs/472effd8-6c3f-47b5-8515-f43fd2289a62.jpeg", href: "#/survivor", phase: 3 },
   { id: "markets1x2", icon: "🏟️", art: "/imgs/1x2.png", href: "#/mercados", phase: 2 },
+  { id: "penalty", icon: "🥅", art: "/imgs/014b4183-2f88-408c-9b03-7495670a06e3.jpeg", href: "#/penalty", phase: 4 },
+  { id: "hilo", icon: "🎯", art: "/imgs/hi-lo.png", href: "#/jogar", hrefStaked: "#/hilo-apostado", phase: 1, soon: true },
+  { id: "survivor", icon: "🛡️", art: "/imgs/472effd8-6c3f-47b5-8515-f43fd2289a62.jpeg", href: "#/survivor", phase: 3, soon: true },
+  { id: "guessStats", icon: "📊", art: "/imgs/5d0fa936-fb1d-4961-b284-4dd2c0353bf7.png", href: "#/stats", phase: 2, soon: true },
+  { id: "liveChallenge", icon: "⚡", art: "/imgs/game-live.jpg", href: "#/live", phase: 5, soon: true },
+  { id: "guessTeam", icon: "🕵️", art: "/imgs/1fa81539-5fe0-447d-8671-13aaa0d8c75c.jpeg", href: "#/team", phase: 5, soon: true },
 ];
 
 export default function GamesHub() {
@@ -98,7 +100,7 @@ export default function GamesHub() {
         <div className="carousel-track" ref={trackRef}>
           {GAMES.map((g) => {
             const info = t.hub.games[g.id];
-            const playable = Boolean(g.href);
+            const playable = Boolean(g.href) && !g.soon;
             const inner = (
               <>
                 {g.art ? (
@@ -111,13 +113,17 @@ export default function GamesHub() {
                 <div className="game-card-overlay">
                   <div className="game-card-top">
                     <span className="badge mono">{t.hub.phaseLabel(g.phase)}</span>
-                    {g.hrefStaked && <span className="stake-pill mono">{t.hub.playStaked}</span>}
+                    {g.soon ? (
+                      <span className="soon-tag mono">{t.hub.soonTag}</span>
+                    ) : (
+                      g.hrefStaked && <span className="stake-pill mono">{t.hub.playStaked}</span>
+                    )}
                   </div>
                   <div className="game-card-bottom">
                     <strong className="game-card-name">{info.name}</strong>
                     <p className="game-card-desc">{info.desc}</p>
                     <span className={`game-card-cta ${playable ? "" : "is-soon"}`}>
-                      {playable ? t.hub.play : t.hub.building}
+                      {g.soon ? t.hub.comingSoon : playable ? t.hub.play : t.hub.building}
                     </span>
                   </div>
                 </div>
@@ -128,7 +134,12 @@ export default function GamesHub() {
                 {inner}
               </a>
             ) : (
-              <div key={g.id} className="game-card is-soon">
+              <div
+                key={g.id}
+                className="game-card is-soon"
+                aria-disabled="true"
+                title={t.hub.soonTag}
+              >
                 {inner}
               </div>
             );

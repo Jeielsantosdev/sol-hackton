@@ -3406,7 +3406,9 @@ a.game-card:hover {
 }
 
 .game-card.is-soon {
-  opacity: 0.72;
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.25);
 }
 
 .game-card-art {
@@ -3457,6 +3459,21 @@ a.game-card:hover {
   color: var(--amber);
   border: 1px solid var(--amber);
   background: rgba(251, 191, 36, 0.12);
+  backdrop-filter: blur(2px);
+}
+
+/* tag "Em breve": sobe acima do esmaecido do card (opacity aplica no pai,
+   então a legibilidade vem do próprio contraste do pill) */
+.soon-tag {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  color: #e7ecf3;
+  border: 1px solid rgba(231, 236, 243, 0.5);
+  background: rgba(20, 22, 26, 0.72);
   backdrop-filter: blur(2px);
 }
 
