@@ -5,7 +5,7 @@ import React, {
   useMemo,
   useCallback,
 } from "react";
-import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import "./circular-testimonials.css";
 
@@ -252,7 +252,7 @@ export const CircularTestimonials = ({
               onMouseLeave={() => setHoverPrev(false)}
               aria-label="Previous testimonial"
             >
-              <FaArrowLeft size={28} color={colorArrowFg} />
+              <FaChevronLeft size={22} color={colorArrowFg} />
             </button>
             <button
               className="arrow-button next-button"
@@ -264,7 +264,7 @@ export const CircularTestimonials = ({
               onMouseLeave={() => setHoverNext(false)}
               aria-label="Next testimonial"
             >
-              <FaArrowRight size={28} color={colorArrowFg} />
+              <FaChevronRight size={22} color={colorArrowFg} />
             </button>
           </div>
         </div>

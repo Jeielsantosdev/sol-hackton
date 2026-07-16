@@ -491,9 +491,9 @@ export default function Landing() {
               name: "#ffffff",
               designation: "#c6f04e",
               testimony: "#d6d6d6",
-              arrowBackground: "#1f1f1f",
+              arrowBackground: "rgba(198, 240, 78, 0.06)",
               arrowForeground: "#c6f04e",
-              arrowHoverBackground: "#c6f04e",
+              arrowHoverBackground: "rgba(198, 240, 78, 0.16)",
             }}
             fontSizes={{
               name: "1.6rem",
