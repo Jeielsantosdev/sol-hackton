@@ -1,4 +1,5 @@
 import react from "@vitejs/plugin-react";
+import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
 
 export default defineConfig({
@@ -13,6 +14,7 @@ export default defineConfig({
     // (o Vite externaliza builtins no browser e Buffer viraria undefined)
     alias: {
       buffer: "buffer/",
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
   optimizeDeps: {
