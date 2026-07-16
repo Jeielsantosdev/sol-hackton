@@ -3243,7 +3243,10 @@ button.lo:hover:not(:disabled) {
 
 /* fundo do campo à noite, fixo e sutil — overlay escuro controla a opacidade
    pra não competir com os cards; z-index negativo mantém tudo clicável */
-.hub-page::before {
+/* .game-page.hub-page (não só .hub-page) pra vencer o .game-page::before
+   genérico do redesign: mesma especificidade empataria e o grid (definido
+   depois no arquivo) ganharia, apagando a foto do campo aqui no hub. */
+.game-page.hub-page::before {
   content: "";
   position: fixed;
   inset: 0;
