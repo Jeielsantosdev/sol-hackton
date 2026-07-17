@@ -3822,8 +3822,8 @@ a.game-card:hover {
   background:
     linear-gradient(
       180deg,
-      rgba(11, 11, 13, 0.82) 0%,
-      rgba(11, 11, 13, 0.9) 45%,
+      rgba(11, 11, 13, 0.42) 0%,
+      rgba(11, 11, 13, 0.66) 45%,
       var(--bg) 100%
     ),
     url("/backgrounds/penalty-stadium.jpg") center 22% / cover no-repeat;
