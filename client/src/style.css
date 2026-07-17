@@ -4181,6 +4181,116 @@ a.game-card:hover {
   );
 }
 
+/* ---------- 1X2 Markets: passos, stake e botões de resultado ---------- */
+
+.mkt-steps {
+  margin-bottom: 4px;
+}
+
+.mkt-stake {
+  align-items: center;
+  width: 100%;
+}
+
+/* a ponte entre o stake e os cards: deixa explícito o que o clique faz */
+.mkt-tap-hint {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--brand);
+}
+
+.outcome-btn {
+  position: relative;
+  overflow: hidden;
+  gap: 4px;
+  padding: 14px 8px 16px;
+}
+
+/* etiqueta 1 / X / 2 no canto do botão */
+.mkt-tag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.outcome-btn:hover:not(:disabled) .mkt-tag,
+.outcome-btn.picked .mkt-tag {
+  color: var(--brand-ink);
+  background: var(--brand);
+  border-color: var(--brand);
+}
+
+/* multiplicador estimado de agora: o motivo pra clicar */
+.mkt-est {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--brand);
+}
+
+/* mini-CTA dentro do botão: a ação fica literal */
+.mkt-bet-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 5px 14px;
+  border-radius: 9999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--brand-ink);
+  background: var(--brand);
+}
+
+.mkt-bet-cta.is-busy {
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+
+.mkt-bet-cta.is-picked {
+  background: rgba(198, 240, 78, 0.12);
+  color: var(--brand);
+  border: 1px solid rgba(198, 240, 78, 0.45);
+}
+
+/* participação do lado no pote, como barra no pé do botão */
+.mkt-share-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(198, 240, 78, 0.55);
+  border-radius: 0 2px 2px 0;
+  transition: width 0.4s ease;
+}
+
+.outcome-btn.picked {
+  border-color: var(--brand);
+  background: rgba(198, 240, 78, 0.07);
+  box-shadow: 0 0 18px rgba(198, 240, 78, 0.15);
+}
+
+.outcome-btn:disabled .mkt-bet-cta {
+  opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mkt-share-bar {
+    transition: none;
+  }
+}
+
 /* ---------- menu de conta no BackBar: endereço, saldo e sair ---------- */
 
 .acct-menu {

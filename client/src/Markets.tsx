@@ -4,7 +4,6 @@ import { useLang } from "./i18n";
 import { LoginPanel, useAccount, useAccountCta } from "./chain/account";
 import { api } from "./chain/http";
 import { formatSol } from "./chain/oddies";
-import HowTo from "./components/HowTo";
 import { celebrateCorrect } from "./celebration";
 import { playSfx } from "./sfx";
 import { teamFlag } from "./flags";
@@ -118,27 +117,50 @@ export default function Markets() {
       />
 
       <div className="shell">
-        <header className="game-hero">
-          <h1 className="game-question">{t.markets.title}</h1>
-          <p className="game-sub">{t.markets.sub}</p>
+        <header className="game-hero hilo-hero">
+          <span className="hilo-hero-badge">{t.hiloUi.heroBadge}</span>
+          <h1 className="hilo-display">
+            <span>{t.marketsUi.heroTitleA}</span>
+            <span className="accent">{t.marketsUi.heroTitleB}</span>
+          </h1>
+          <p className="game-sub">{t.marketsUi.heroTag}</p>
         </header>
 
-        <HowTo steps={t.howto.markets.steps} profit={t.howto.markets.profit} />
+        {/* o loop do jogo em 4 passos: bate o olho e sabe jogar */}
+        <ol className="hilo-steps hilo-steps-rich mkt-steps">
+          {t.marketsUi.steps.map((s, i) => (
+            <li key={i}>
+              <span className="hilo-step-n mono">{i + 1}</span>
+              <div>
+                <strong>{s}</strong>
+                <small>{t.marketsUi.stepDescs[i]}</small>
+              </div>
+            </li>
+          ))}
+        </ol>
 
         {error && <p className="dim center run-error">⚠️ {error}</p>}
         {!account.address && <LoginPanel note={t.markets.connectFirst} />}
 
-        <div className="stake-row center-row">
-          <span className="staked-label-inline">{t.markets.stakeLabel}:</span>
-          {STAKE_PRESETS.map((s) => (
-            <button
-              key={s}
-              className={`stake-chip mono ${stakeSol === s ? "selected" : ""}`}
-              onClick={() => setStakeSol(s)}
-            >
-              {s} SOL
-            </button>
-          ))}
+        {/* stake como campo de verdade: o clique nos resultados usa esse valor */}
+        <div className="hilo-field mkt-stake">
+          <h2 className="hilo-field-label center">{t.markets.stakeLabel}</h2>
+          <div className="stake-row">
+            {STAKE_PRESETS.map((s) => (
+              <button
+                key={s}
+                className={`stake-chip mono ${stakeSol === s ? "selected" : ""}`}
+                onClick={() => setStakeSol(s)}
+              >
+                {s} SOL
+              </button>
+            ))}
+          </div>
+          {account.address && (
+            <p className="mkt-tap-hint">
+              👇 {t.marketsUi.tapHint(`${stakeSol} SOL`)}
+            </p>
+          )}
         </div>
 
         {loading ? (
@@ -176,6 +198,9 @@ export default function Markets() {
                     {[0, 1, 2].map((i) => {
                       const key = `${m.marketId}:${i}`;
                       const winner = m.status === "resolved" && m.winningOutcome === i;
+                      // estimativa parimutuel de agora: (pote + stake) / (lado + stake)
+                      const stakeL = Math.round(stakeSol * 1e9);
+                      const est = (m.totalPool + stakeL) / (m.pools[i] + stakeL);
                       return (
                         <button
                           key={i}
@@ -185,18 +210,47 @@ export default function Markets() {
                           disabled={!open || betting !== null || !account.address}
                           onClick={() => bet(m, i)}
                         >
+                          <span className="mkt-tag mono" aria-hidden="true">
+                            {i === 0 ? "1" : i === 1 ? "X" : "2"}
+                          </span>
                           <span className="outcome-name">{outcomeLabel(m, i)}</span>
                           <span className="outcome-pct mono">{m.poolPct[i]}%</span>
                           <small className="mono">{formatSol(m.pools[i], 4)}</small>
-                          {betting === key && <small>{t.markets.betting}</small>}
-                          {myPick === i && <small>✓ {t.markets.yourPick}</small>}
+                          <span className="mkt-est mono">
+                            {t.marketsUi.est(
+                              est.toLocaleString(undefined, {
+                                maximumFractionDigits: 1,
+                              })
+                            )}
+                          </span>
+                          {betting === key ? (
+                            <span className="mkt-bet-cta is-busy">
+                              <span className="hilo-spinner" aria-hidden="true" />
+                              {t.markets.betting}
+                            </span>
+                          ) : myPick === i ? (
+                            <span className="mkt-bet-cta is-picked">
+                              ✓ {t.markets.yourPick}
+                            </span>
+                          ) : open && account.address ? (
+                            <span className="mkt-bet-cta">
+                              {t.marketsUi.betCta(`${stakeSol} SOL`)}
+                            </span>
+                          ) : null}
+                          {/* participação do lado no pote, visual */}
+                          <span
+                            className="mkt-share-bar"
+                            aria-hidden="true"
+                            style={{ width: `${m.poolPct[i]}%` }}
+                          />
                         </button>
                       );
                     })}
                   </div>
 
                   <div className="market-foot mono">
-                    💰 {formatSol(m.totalPool, 4)} {t.markets.inPool}
+                    💰 {formatSol(m.totalPool, 4)} {t.markets.inPool} ·{" "}
+                    <span className="dim">{t.marketsUi.estNote}</span>
                   </div>
                   {myPick !== undefined && (
                     <p className="dim market-ok">{t.markets.betOk}</p>

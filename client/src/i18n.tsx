@@ -795,6 +795,30 @@ const pt = {
     signWindow: "time left to sign",
   },
 
+  /* microcopy do redesign do 1X2 Markets (site em inglês) */
+  marketsUi: {
+    heroTitleA: "1X2",
+    heroTitleB: "Markets",
+    heroTag:
+      "Back home (1), draw (X) or away (2). Winners split the whole pot, proportional to their stake.",
+    steps: [
+      "Pick your stake",
+      "Choose 1 · X · 2",
+      "Sign the bet",
+      "Winners split the pot",
+    ],
+    stepDescs: [
+      "Select how much SOL each bet uses.",
+      "1 = home win, X = draw, 2 = away win.",
+      "Your wallet signs — a ticket-NFT is your proof.",
+      "After the match, the pot splits by stake among winners.",
+    ],
+    tapHint: (sol: string) => `Tap an outcome below to bet ${sol}`,
+    betCta: (sol: string) => `Bet ${sol}`,
+    est: (x: string) => `≈${x}× now`,
+    estNote: "≈× is the payout right now — it moves as the pot grows.",
+  },
+
   statsGame: {
     docTitle: "Guess the Stats · ChainPlay",
     title: "Guess the Stats",
@@ -1847,6 +1871,30 @@ const en: Dict = {
     summaryTop: "top pays",
     summaryPrize: "potential prize",
     signWindow: "time left to sign",
+  },
+
+  /* microcopy do redesign do 1X2 Markets (site em inglês) */
+  marketsUi: {
+    heroTitleA: "1X2",
+    heroTitleB: "Markets",
+    heroTag:
+      "Back home (1), draw (X) or away (2). Winners split the whole pot, proportional to their stake.",
+    steps: [
+      "Pick your stake",
+      "Choose 1 · X · 2",
+      "Sign the bet",
+      "Winners split the pot",
+    ],
+    stepDescs: [
+      "Select how much SOL each bet uses.",
+      "1 = home win, X = draw, 2 = away win.",
+      "Your wallet signs — a ticket-NFT is your proof.",
+      "After the match, the pot splits by stake among winners.",
+    ],
+    tapHint: (sol: string) => `Tap an outcome below to bet ${sol}`,
+    betCta: (sol: string) => `Bet ${sol}`,
+    est: (x: string) => `≈${x}× now`,
+    estNote: "≈× is the payout right now — it moves as the pot grows.",
   },
 
   statsGame: {
