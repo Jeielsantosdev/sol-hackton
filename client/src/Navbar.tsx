@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLang } from "./i18n";
 import chainplayLogo from "./assets/chainplay-logo.png";
 
@@ -132,11 +133,15 @@ export default function Navbar({
         </button>
       </div>
 
-      <div className={`topbar-menu ${open ? "open" : ""}`}>
-        {links.map(renderLink)}
-        {secondaryEl}
-        {ctaEl}
-      </div>
+      {open &&
+        createPortal(
+          <div className="topbar-menu open">
+            {links.map(renderLink)}
+            {secondaryEl}
+            {ctaEl}
+          </div>,
+          document.body,
+        )}
     </nav>
   );
 }

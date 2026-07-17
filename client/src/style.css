@@ -34,7 +34,11 @@ body {
   min-height: 100vh;
   /* corta o transbordo horizontal na borda da viewport (não na borda da
      coluna), para o mascote poder aparecer nas margens laterais em telas
-     largas sem gerar scroll horizontal; clip preserva a navbar sticky */
+     largas sem gerar scroll horizontal; clip preserva a navbar sticky.
+     hidden vem antes como fallback para navegadores sem suporte a
+     overflow-x: clip (ex.: Safari/WebViews mais antigos), que do
+     contrário ignoram a linha e voltam a "visible" (scroll horizontal). */
+  overflow-x: hidden;
   overflow-x: clip;
 }
 
@@ -561,6 +565,14 @@ a.logo:hover {
   display: flex;
   align-items: center;
   min-height: calc(100svh - 96px);
+  /* contém o transbordo do mascote (.hero-character bleed) nesta seção
+     em vez de deixar só o body cortar: alguns navegadores mobile calculam
+     `position: fixed` de outros elementos da página (ex.: o overlay do
+     menu) contra a largura de layout real quando há qualquer transbordo
+     não contido, mesmo que visualmente mascarado — então cortamos aqui
+     também para a largura de layout nunca crescer além da viewport. */
+  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .hero > .hero-grid {
@@ -2169,6 +2181,8 @@ button.lo:hover:not(:disabled) {
   margin-left: auto;
   display: flex;
   align-items: center;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 @media (max-width: 560px) {
@@ -2182,6 +2196,10 @@ button.lo:hover:not(:disabled) {
   .backbar-back {
     padding: 6px 10px;
     font-size: 0.82rem;
+  }
+
+  .backbar-back-label {
+    display: none;
   }
 }
 
@@ -2275,17 +2293,18 @@ button.lo:hover:not(:disabled) {
 
 .topbar-menu {
   display: none;
-  position: absolute;
-  top: 100%;
+  position: fixed;
+  top: 84px;
   left: 0;
   right: 0;
+  bottom: 0;
   flex-direction: column;
   align-items: stretch;
   gap: 4px;
-  padding: 12px 20px 16px;
-  background: rgba(10, 14, 22, 0.97);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border);
+  padding: 16px 20px 24px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  overflow-y: auto;
   animation: menu-drop 0.2s ease both;
 }
 
@@ -4265,6 +4284,10 @@ a.game-card:hover {
 .game-page {
   position: relative;
   isolation: isolate;
+  /* contém o brilho decorativo de .cards::before (que usa inset negativo)
+     para a largura de layout da página nunca exceder a viewport real. */
+  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .game-page::before {
@@ -4533,10 +4556,22 @@ a.game-card:hover {
 
 .acct-menu {
   position: relative;
+  min-width: 0;
 }
 
 .acct-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
   white-space: nowrap;
+}
+
+.acct-trigger-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 3ch;
 }
 
 .acct-caret {

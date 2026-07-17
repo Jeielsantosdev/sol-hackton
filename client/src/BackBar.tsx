@@ -66,7 +66,8 @@ function AccountMenu() {
         aria-label={t.auth.menuAria}
         onClick={() => setOpen((o) => !o)}
       >
-        👛 {label} <span className="acct-caret" aria-hidden="true">▾</span>
+        👛 <span className="acct-trigger-label">{label}</span>{" "}
+        <span className="acct-caret" aria-hidden="true">▾</span>
       </button>
 
       {open && (
@@ -128,7 +129,8 @@ export default function BackBar({ action }: { action?: BackBarAction }) {
       </a>
 
       <a className="backbar-back" href="#/jogos">
-        <span aria-hidden="true">‹</span> {t.nav.backToGames}
+        <span aria-hidden="true">‹</span>{" "}
+        <span className="backbar-back-label">{t.nav.backToGames}</span>
       </a>
 
       <div className="backbar-action">{actionEl}</div>
