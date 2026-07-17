@@ -3573,26 +3573,61 @@ a.game-card:hover {
 }
 
 .ticket-card {
-  align-items: stretch;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   text-align: left;
-  gap: 10px;
-  padding: 16px 20px;
+  gap: 10px 14px;
+  padding: 12px 16px;
+  /* .card reserva 230px para a carta do Hi-Lo; o ticket é só texto */
+  min-height: 0;
+}
+
+.ticket-main {
+  flex: 1 1 200px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
 .ticket-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
 }
 
 .ticket-meta {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 6px 14px;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   color: var(--dim, #9aa4b2);
+}
+
+.ticket-side {
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+
+.ticket-payout {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  line-height: 1.25;
+}
+
+.ticket-payout-label {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+}
+
+.ticket-payout-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
 }
 
 .ticket-claimable {
@@ -5356,8 +5391,8 @@ ol.hilo-steps.hilo-steps-rich {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 18px 22px;
-  border-radius: 16px;
+  padding: 12px 18px;
+  border-radius: 14px;
   border: 1px solid var(--border);
   background: linear-gradient(
     180deg,
@@ -5374,12 +5409,12 @@ ol.hilo-steps.hilo-steps-rich {
 }
 .wallet-page .wallet-avatar {
   flex: none;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-size: 1.4rem;
+  font-size: 1.15rem;
   background: var(--brand);
   color: var(--brand-ink);
 }
@@ -5436,10 +5471,10 @@ ol.hilo-steps.hilo-steps-rich {
 
 /* --- tickets como NFT-cards: barra de status na lateral --- */
 .wallet-page .ticket-card {
-  border-radius: 14px;
+  border-radius: 12px;
   position: relative;
   overflow: hidden;
-  padding-left: 24px;
+  padding-left: 20px;
 }
 .wallet-page .ticket-card::before {
   content: "";
@@ -5463,7 +5498,30 @@ ol.hilo-steps.hilo-steps-rich {
   background: var(--muted);
 }
 .wallet-page .ticket-head strong {
-  font-size: 1rem;
+  font-size: 0.94rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* status: a barra lateral já dá a cor — o chip fica discreto e só
+   ganha voz em "claimable", o único estado que pede ação. */
+.wallet-page .ticket-badge {
+  flex: none;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  background: rgba(0, 0, 0, 0.28);
+}
+.wallet-page .ticket-claimable .ticket-badge {
+  border-color: rgba(94, 234, 143, 0.5);
+  color: #5eea8f;
+  background: rgba(94, 234, 143, 0.1);
 }
 
 /* --- estados vazio / erro mais visuais --- */

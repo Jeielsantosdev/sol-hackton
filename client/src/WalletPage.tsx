@@ -175,41 +175,47 @@ export default function WalletPage() {
                       const status = justClaimed ? "claimed" : ti.status;
                       return (
                         <div key={ti.ticketMint} className={`card ticket-card ticket-${status}`}>
-                          <div className="ticket-head">
-                            <strong>
-                              {ti.label ??
-                                (ti.kind === "houseBacked"
-                                  ? t.walletPage.kindRun
-                                  : t.walletPage.kindMarket)}
-                            </strong>
-                            <span className="badge mono">{statusLabel[status]}</span>
-                          </div>
-                          <div className="ticket-meta mono">
-                            <span>
+                          <div className="ticket-main">
+                            <div className="ticket-head">
+                              <strong>
+                                {ti.label ??
+                                  (ti.kind === "houseBacked"
+                                    ? t.walletPage.kindRun
+                                    : t.walletPage.kindMarket)}
+                              </strong>
+                              <span className="ticket-badge mono">{statusLabel[status]}</span>
+                            </div>
+                            <div className="ticket-meta mono">
                               {t.walletPage.outcomeLabel(ti.outcome)} · {t.walletPage.stake}{" "}
                               {formatSol(ti.stakeNet)}
-                            </span>
-                            <span>
-                              {ti.status === "open"
-                                ? t.walletPage.estPayout
-                                : t.walletPage.payout}
-                              : <b>{formatSol(ti.payout)}</b>
-                            </span>
+                            </div>
                           </div>
-                          {status === "claimable" && (
-                            <button
-                              className="primary"
-                              disabled={claiming === ti.ticketMint}
-                              onClick={() => onClaim(ti)}
-                            >
-                              {claiming === ti.ticketMint
-                                ? t.walletPage.claiming
-                                : `${t.walletPage.claim} · ${formatSol(ti.payout)}`}
-                            </button>
-                          )}
-                          {justClaimed && (
-                            <span className="pending-chip">{t.walletPage.claimed}</span>
-                          )}
+                          <div className="ticket-side">
+                            {status === "claimable" ? (
+                              <button
+                                className="btn primary small"
+                                disabled={claiming === ti.ticketMint}
+                                onClick={() => onClaim(ti)}
+                              >
+                                {claiming === ti.ticketMint
+                                  ? t.walletPage.claiming
+                                  : `${t.walletPage.claim} · ${formatSol(ti.payout)}`}
+                              </button>
+                            ) : justClaimed ? (
+                              <span className="pending-chip">{t.walletPage.claimed}</span>
+                            ) : (
+                              <div className="ticket-payout">
+                                <span className="ticket-payout-label">
+                                  {ti.status === "open"
+                                    ? t.walletPage.estPayout
+                                    : t.walletPage.payout}
+                                </span>
+                                <b className="ticket-payout-value mono">
+                                  {formatSol(ti.payout)}
+                                </b>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
