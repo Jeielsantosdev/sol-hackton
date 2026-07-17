@@ -131,7 +131,7 @@ export default function Arcade({ game }: { game: ArcadeGame }) {
   const pct = Math.round((leftMs / totalMs) * 100);
 
   return (
-    <div className="game-page">
+    <div className="game-page arcade-page">
       <BackBar
         action={
           accountCta ?? {
@@ -186,7 +186,7 @@ export default function Arcade({ game }: { game: ArcadeGame }) {
 
         {/* penalty e live têm os dois modos (grátis + valendo SOL) */}
         {account.address && (
-          <div className="stake-row center-row">
+          <div className="stake-row center-row arcade-tabs">
             <button
               className={`stake-chip ${tab === "free" ? "selected" : ""}`}
               onClick={() => setTab("free")}
@@ -689,40 +689,42 @@ function StakedPenalty() {
             ))}
           </div>
 
-          {/* resumo da aposta: stake → odds → prêmio, como nos outros jogos */}
-          <dl className="hilo-summary penalty-summary">
-            <div>
-              <dt>{t.hiloUi.summaryStake}</dt>
-              <dd className="mono">{stakeSol} SOL</dd>
-            </div>
-            <div>
-              <dt>{t.hiloUi.summaryTop}</dt>
-              <dd className="mono">{(oddsBps / 10_000).toLocaleString()}×</dd>
-            </div>
-            <div className="hilo-summary-prize">
-              <dt>{t.hiloUi.summaryPrize}</dt>
-              <dd className="mono">{formatSol(potential)}</dd>
-            </div>
-          </dl>
-          {insufficient && (
-            <p className="dim center run-error">
-              ⚠️ {t.staked.insufficient(formatSol(stakeLamports))}
-            </p>
-          )}
-          <button
-            className="primary staked-cta"
-            disabled={phase === "creating" || !oddsBps || insufficient}
-            onClick={createSession}
-          >
-            {phase === "creating" ? (
-              <span className="hilo-btn-loading">
-                <span className="hilo-spinner" aria-hidden="true" />
-                {t.penaltySession.creating}
-              </span>
-            ) : (
-              t.penaltySession.start
+          {/* caixa de payout: resumo (stake → odds → prêmio) + CTA na mesma moldura */}
+          <div className="payout-box">
+            <dl className="hilo-summary penalty-summary">
+              <div>
+                <dt>{t.hiloUi.summaryStake}</dt>
+                <dd className="mono">{stakeSol} SOL</dd>
+              </div>
+              <div>
+                <dt>{t.hiloUi.summaryTop}</dt>
+                <dd className="mono">{(oddsBps / 10_000).toLocaleString()}×</dd>
+              </div>
+              <div className="hilo-summary-prize">
+                <dt>{t.hiloUi.summaryPrize}</dt>
+                <dd className="mono">{formatSol(potential)}</dd>
+              </div>
+            </dl>
+            {insufficient && (
+              <p className="dim center run-error">
+                ⚠️ {t.staked.insufficient(formatSol(stakeLamports))}
+              </p>
             )}
-          </button>
+            <button
+              className="primary staked-cta"
+              disabled={phase === "creating" || !oddsBps || insufficient}
+              onClick={createSession}
+            >
+              {phase === "creating" ? (
+                <span className="hilo-btn-loading">
+                  <span className="hilo-spinner" aria-hidden="true" />
+                  {t.penaltySession.creating}
+                </span>
+              ) : (
+                t.penaltySession.start
+              )}
+            </button>
+          </div>
           <p className="dim devnet-note">{t.staked.devnetNote}</p>
         </>
       )}

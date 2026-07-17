@@ -3640,30 +3640,39 @@ a.game-card:hover {
 
 .target-card {
   cursor: pointer;
-  padding: 14px 8px;
+  padding: 16px 10px;
   gap: 4px;
   min-height: 0;
+  border-radius: 12px;
   justify-content: center;
-  transition: transform 0.12s, border-color 0.12s;
+  transition: transform 0.12s, border-color 0.12s, background 0.12s;
 }
 
 .target-card:hover {
   transform: translateY(-2px);
 }
 
+/* meta escolhida: cartão preenchido na lima da marca com texto escuro (ref.) */
 .target-card.selected {
-  border-color: rgba(94, 234, 143, 0.7);
-  box-shadow: 0 0 16px rgba(94, 234, 143, 0.18);
+  border-color: var(--brand);
+  background: var(--brand);
+  color: var(--brand-ink);
+  box-shadow: 0 0 20px rgba(198, 240, 78, 0.25);
 }
 
 .target-n {
-  font-size: 1.6rem;
+  font-size: 1.7rem;
   font-weight: 700;
 }
 
 .target-odds {
   font-size: 0.78rem;
   color: var(--dim, #9aa4b2);
+}
+
+.target-card.selected .target-odds {
+  color: var(--brand-ink);
+  opacity: 0.72;
 }
 
 .stake-row {
@@ -3707,6 +3716,84 @@ a.game-card:hover {
 
 .lock-countdown {
   font-size: 1.4rem;
+}
+
+/* ---- Penalty · aba Valendo SOL: alinhamento à marca lima e à referência ---- */
+
+/* aba ativa (Grátis / Valendo SOL): preenchida em lima, texto escuro */
+.arcade-tabs .stake-chip.selected {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: var(--brand-ink);
+}
+
+/* chips de stake do penalty: seleção em contorno lima */
+.staked-config .stake-chip.selected {
+  border-color: var(--brand);
+  background: rgba(198, 240, 78, 0.12);
+  color: var(--brand);
+}
+
+/* caixa de payout: moldura única que agrupa o resumo e o CTA (ref.) */
+.payout-box {
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+/* dentro da caixa o resumo abre mão da própria moldura pra não duplicar bordas */
+.payout-box .penalty-summary {
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.payout-box .penalty-summary > div,
+.payout-box .penalty-summary > .hilo-summary-prize {
+  background: transparent;
+  padding: 4px 10px;
+}
+
+/* CTA: barra larga sobre lima, texto escuro (herda de .primary), brilho sutil */
+.staked-config .staked-cta {
+  width: 100%;
+  min-width: 0;
+  max-width: 460px;
+  padding: 15px 24px;
+  font-size: 1.02rem;
+  box-shadow: 0 8px 24px rgba(198, 240, 78, 0.2);
+}
+
+/* dentro da caixa o CTA preenche toda a largura interna */
+.payout-box .staked-cta {
+  max-width: none;
+}
+
+/* nota devnet: centralizada logo abaixo do CTA (ref.) */
+.staked-config .devnet-note {
+  text-align: center;
+}
+
+/* leaderboard do arcade: sem caixa, só um filete sutil acima (ref.) */
+.arcade-page .lb-card {
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  margin-top: 28px;
+  padding: 22px 20px 0;
+  text-align: center;
+}
+
+.arcade-page .lb-title {
+  text-align: center;
 }
 
 .run-error {
