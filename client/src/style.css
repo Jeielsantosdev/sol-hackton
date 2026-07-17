@@ -2596,18 +2596,49 @@ button.lo:hover:not(:disabled) {
   transform: translateX(clamp(-72px, -5vw, -36px));
 }
 
-/* card do hero: moldura do vídeo de demonstração do minigame */
+/* card do hero: moldura do vídeo de demonstração do minigame, com
+   brilho de marca ao redor para dar destaque ao vídeo em reprodução */
 .hero-media {
   position: relative;
   width: clamp(240px, 26vw, 500px);
   aspect-ratio: 16 / 10;
   border-radius: 12px;
   background: #0b0b0d;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(198, 240, 78, 0.4);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(198, 240, 78, 0.08),
+    0 0 70px rgba(198, 240, 78, 0.35),
+    0 0 140px rgba(198, 240, 78, 0.18);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  animation: hero-media-glow 3.2s ease-in-out infinite;
+}
+
+@keyframes hero-media-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 24px 60px rgba(0, 0, 0, 0.4),
+      0 0 0 1px rgba(198, 240, 78, 0.08),
+      0 0 70px rgba(198, 240, 78, 0.35),
+      0 0 140px rgba(198, 240, 78, 0.18);
+  }
+  50% {
+    box-shadow:
+      0 24px 60px rgba(0, 0, 0, 0.4),
+      0 0 0 1px rgba(198, 240, 78, 0.14),
+      0 0 90px rgba(198, 240, 78, 0.5),
+      0 0 170px rgba(198, 240, 78, 0.26);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-media {
+    animation: none;
+  }
 }
 
 .hero-media-img,
