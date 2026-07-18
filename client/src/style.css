@@ -2593,7 +2593,12 @@ button.lo:hover:not(:disabled) {
 .hero-figure {
   position: relative;
   display: inline-block;
-  transform: translateX(clamp(-72px, -5vw, -36px));
+  /* desloca o conjunto card+mascote mais para a esquerda para que a borda
+     direita do camaleão (braço/cauda em espiral) caiba dentro da seção e
+     não seja cortada pelo overflow-x: clip do .hero — sem alterar o tamanho
+     nem as proporções da imagem. Valor forte só no desktop (layout de duas
+     colunas); no mobile é reduzido no media query abaixo. */
+  transform: translateX(clamp(-150px, -10vw, -60px));
 }
 
 /* card do hero: moldura do vídeo de demonstração do minigame, com
@@ -3154,6 +3159,12 @@ button.lo:hover:not(:disabled) {
   .hero-grid {
     grid-template-columns: 1fr;
     gap: 36px;
+  }
+
+  /* em coluna única (centrado) o transbordo do desktop empurraria o card
+     para fora à esquerda — volta ao deslocamento suave original */
+  .hero-figure {
+    transform: translateX(clamp(-72px, -5vw, -36px));
   }
 
   .hero-copy {

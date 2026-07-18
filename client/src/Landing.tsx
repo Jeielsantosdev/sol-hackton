@@ -3,7 +3,6 @@ import { useLang } from "./i18n";
 import { celebrateCorrect } from "./celebration";
 import Navbar from "./Navbar";
 import PlayerAdvantageSection from "./PlayerAdvantageSection";
-import HowItWorksSection from "./HowItWorksSection";
 import { CircularTestimonials } from "@/components/ui/circular-testimonials";
 import heroCharacter from "./assets/chameleon1.png";
 import chainplayLogo from "./assets/chainplay-logo.png";
@@ -421,7 +420,6 @@ export default function Landing() {
       <Navbar
         links={[
           { label: t.nav.minigames, href: "#minigames" },
-          { label: t.nav.how, href: "#get-started" },
         ]}
         secondaryCta={{ label: t.nav.signup, href: "#/jogos" }}
         cta={{ label: t.nav.play, href: "#/jogos" }}
@@ -444,7 +442,7 @@ export default function Landing() {
               <a className="btn primary big" href="#/jogos">
                 {t.hero.heroCtaStart}
               </a>
-              <a className="btn ghost big" href="#como-funciona">
+              <a className="btn ghost big" href="#minigames">
                 {t.hero.heroCtaExplore}
               </a>
             </div>
@@ -508,8 +506,6 @@ export default function Landing() {
       </section>
 
       <PlayerAdvantageSection />
-
-      <HowItWorksSection />
 
       <section className="section reveal" id="faq">
         <span className="section-kicker mono">{t.faq.kicker}</span>
@@ -581,7 +577,6 @@ export default function Landing() {
           <nav className="footer-col" aria-label={t.footer.products}>
             <strong className="footer-heading">{t.footer.products}</strong>
             <a href="#minigames">{t.footer.minigames}</a>
-            <a href="#get-started">{t.footer.howItWorks}</a>
           </nav>
         </div>
       </footer>
