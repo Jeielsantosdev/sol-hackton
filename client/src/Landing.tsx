@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLang } from "./i18n";
 import { celebrateCorrect } from "./celebration";
+import IntroSplash from "./IntroSplash";
 import Navbar from "./Navbar";
 import PlayerAdvantageSection from "./PlayerAdvantageSection";
 import { CircularTestimonials } from "@/components/ui/circular-testimonials";
@@ -414,9 +415,12 @@ function ArenaRightPanel() {
 export default function Landing() {
   const { t } = useLang();
   useReveal();
+  const [introDone, setIntroDone] = useState(false);
 
   return (
-    <div className="landing">
+    <>
+      {!introDone && <IntroSplash onFinish={() => setIntroDone(true)} />}
+      <div className={`landing${introDone ? "" : " landing-intro-hidden"}`}>
       <Navbar
         links={[
           { label: t.nav.minigames, href: "#minigames" },
@@ -594,6 +598,7 @@ export default function Landing() {
           ))}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
