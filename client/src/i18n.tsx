@@ -535,7 +535,7 @@ const pt = {
     gameFooter: (
       <>
         Dados de partidas via{" "}
-        <a href="https://txline.txodds.com" target="_blank" rel="noreferrer">
+        <a href="https://txline.txodds.com/documentation/worldcup" target="_blank" rel="noreferrer">
           TxLINE
         </a>{" "}
         (TxODDS) com ancoragem na Solana
@@ -1624,7 +1624,7 @@ const en: Dict = {
     gameFooter: (
       <>
         Match data via{" "}
-        <a href="https://txline.txodds.com" target="_blank" rel="noreferrer">
+        <a href="https://txline.txodds.com/documentation/worldcup" target="_blank" rel="noreferrer">
           TxLINE
         </a>{" "}
         (TxODDS) anchored on Solana
