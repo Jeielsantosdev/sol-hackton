@@ -2632,6 +2632,19 @@ button.lo:hover:not(:disabled) {
   }
 }
 
+/* brilho ainda mais discreto no mobile, onde o card ocupa boa parte da
+   largura da tela e o glow forte chama atenção demais */
+@media (max-width: 660px) {
+  .hero-media {
+    border-color: rgba(198, 240, 78, 0.12);
+    box-shadow:
+      0 24px 60px rgba(0, 0, 0, 0.4),
+      0 0 18px rgba(198, 240, 78, 0.07),
+      0 0 34px rgba(198, 240, 78, 0.03);
+    animation: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hero-media {
     animation: none;
@@ -3330,7 +3343,9 @@ button.lo:hover:not(:disabled) {
   box-shadow: 0 0 0 1px rgba(80, 200, 255, 0.12), 0 0 34px rgba(60, 180, 255, 0.22),
     inset 0 0 40px rgba(40, 120, 180, 0.08);
   overflow: hidden;
-  min-height: 320px;
+  /* proporção real do vídeo (1920x1080): com min-height fixo o card ficava
+     quase quadrado em telas estreitas, cortando a logo no object-fit:cover */
+  aspect-ratio: 16 / 9;
 }
 
 .pred-video {
