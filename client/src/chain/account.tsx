@@ -30,7 +30,6 @@ interface SessionInfo {
 
 interface AuthConfig {
   googleEnabled: boolean;
-  guestEnabled: boolean;
 }
 
 interface AccountCtx {
@@ -49,7 +48,6 @@ interface AccountCtx {
   custodialBalance: number | null;
   connectWallet(): Promise<void>;
   loginGoogle(credential: string): Promise<void>;
-  loginGuest(): Promise<void>;
   logout(): Promise<void>;
   placeBet(
     marketId: string,
@@ -73,7 +71,6 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   });
   const [authConfig, setAuthConfig] = useState<AuthConfig>({
     googleEnabled: false,
-    guestEnabled: true,
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -172,19 +169,6 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const loginGuest = useCallback(async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      adoptSession(await api("/api/auth/guest", {}));
-    } catch (e) {
-      console.error("[account] login convidado falhou:", e);
-      setError(String((e as Error).message));
-    } finally {
-      setBusy(false);
-    }
-  }, []);
-
   const logout = useCallback(async () => {
     siwsAttempted.current = null;
     if (session) {
@@ -259,7 +243,6 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         custodialBalance,
         connectWallet: wallet.connect,
         loginGoogle,
-        loginGuest,
         logout,
         placeBet,
         claim,
@@ -316,11 +299,10 @@ export function LoginPanel({ note }: { note?: string }) {
   const { t } = useLang();
   const account = useAccount();
   const wallet = useWallet();
-  // Google e convidado são contas custodiais assinadas pelo server — sem API
-  // não funcionam; o web3 connect fala direto com a chain e segue de pé.
+  // Google é conta custodial assinada pelo server — sem API não funciona;
+  // o web3 connect fala direto com a chain e segue de pé.
   const googleReady =
     !account.apiOffline && account.authConfig.googleEnabled && Boolean(GOOGLE_CLIENT_ID);
-  const guestReady = !account.apiOffline && account.authConfig.guestEnabled;
 
   return (
     <div className="endgame login-panel">
@@ -332,12 +314,6 @@ export function LoginPanel({ note }: { note?: string }) {
         </button>
 
         {googleReady && <GoogleButton onCredential={account.loginGoogle} />}
-
-        {guestReady && (
-          <button className="ghost-btn" disabled={account.busy} onClick={account.loginGuest}>
-            {t.auth.asGuest}
-          </button>
-        )}
       </div>
 
       {account.apiOffline && <p className="dim login-hint">{t.auth.apiOfflineHint}</p>}

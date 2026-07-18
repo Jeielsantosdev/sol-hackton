@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "ALLOW_GUEST=1 tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "subscribe": "tsx src/scripts/subscribe.ts",
     "create:collections": "tsx src/scripts/create-collections.ts",

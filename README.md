@@ -61,9 +61,10 @@ e no plano completo em [`docs/plano-minigames.md`](docs/plano-minigames.md).
 - **Tempo real via WebSocket** (`/ws/live`): o servidor faz poll da TxLINE (45s) e só
   propaga os deltas (partidas que mudaram) para os clientes conectados — sem clients
   ouvindo, não há poll, economizando cota da API.
-- **Autenticação sem fricção**: sessão de convidado (guest) + custódia de wallet, sem
-  exigir extensão de carteira para experimentar o produto; wallet adapters (Phantom,
-  Solflare, Backpack) entram para quem quer jogar com fundos próprios.
+- **Autenticação sem fricção**: login social (Google) com custódia de wallet no
+  servidor, sem exigir extensão de carteira para experimentar o produto; wallet
+  adapters (Phantom, Solflare, Backpack) entram para quem quer jogar com fundos
+  próprios.
 - **Auditoria de segurança própria**: revisão sistemática de IDOR, tratamento de
   erros e logging aplicada ao backend (ver [`docs/security-review.md`](docs/security-review.md) e
   [`docs/audit-log-integracao.md`](docs/audit-log-integracao.md)), com correções
@@ -82,7 +83,7 @@ e no plano completo em [`docs/plano-minigames.md`](docs/plano-minigames.md).
 - **Ativo colecionável embutido na aposta**: o ticket-NFT não é só um comprovante —
   é transferível e vendável, e carrega a "marca" do jogo (Collection NFT por jogo),
   abrindo espaço para secundário e para badges/conquistas por jogo.
-- **Baixa barreira de entrada**: modo demo/guest sem stake para conhecer o jogo antes
+- **Baixa barreira de entrada**: modos demo sem stake para conhecer o jogo antes
   de arriscar fundos, e stakes pequenos (a partir de 0,002 SOL) nos modos apostados.
 
 ---

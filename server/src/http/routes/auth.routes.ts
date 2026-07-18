@@ -16,7 +16,7 @@ export const authRoutes = Router();
 authRoutes.get("/config", (_req, res) => {
   res.json({
     googleEnabled: Boolean(process.env.GOOGLE_CLIENT_ID),
-    guestEnabled: process.env.ALLOW_GUEST !== "0",
+    guestEnabled: process.env.ALLOW_GUEST === "1",
     walletEnabled: true,
   });
 });
