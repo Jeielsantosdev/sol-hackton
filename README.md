@@ -1,173 +1,242 @@
-# ChainPlay
+<p align="center">
+  <img src="docs/assets/chainplay-banner.png" alt="ChainPlay" width="700" />
+</p>
 
-Plataforma de minigames de futebol com apostas on-chain em Solana, construída sobre
-dados reais da Copa do Mundo fornecidos pela **API da TxLINE**. Cada palpite vira uma
-transação verificável na blockchain e cada aposta gera um **ticket-NFT** que dá direito
-ao prêmio.
+<p align="center">
+  <b>Football minigames with on-chain betting on Solana, powered by real World Cup data from the TxLINE API.</b><br/>
+  Every prediction becomes a verifiable transaction. Every bet mints an <b>NFT ticket</b> that redeems the prize.
+</p>
 
-Este documento reúne o resumo técnico do projeto para fins de submissão do hackathon:
-ideia principal, destaques técnicos e de negócio, os endpoints da TxLINE utilizados e o
-feedback da nossa equipe sobre a experiência de integração com a API.
+<p align="center">
+  <img src="https://img.shields.io/badge/Solana-devnet-9945FF?logo=solana&logoColor=white" alt="Solana devnet" />
+  <img src="https://img.shields.io/badge/Anchor-oddies__bet-blue" alt="Anchor program" />
+  <img src="https://img.shields.io/badge/TypeScript-React%20%2B%20Express-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/data-TxLINE%20API-84cc16" alt="TxLINE API" />
+</p>
 
----
+<p align="center">
+  <a href="docs/README.md"><b>📚 Project Wiki</b></a> — the games, the TxLINE integration, the Solana program, security &amp; the full docs index
+  ·
+  <a href="docs/technical-integrations.md"><b>📐 Technical Deep Dive</b></a>
+</p>
 
-## 1. Ideia principal
-
-O ChainPlay transforma estatísticas ao vivo da Copa do Mundo em minigames rápidos e
-apostáveis: o jogador palpita sobre gols, escanteios, cartões, posse de bola ou o
-resultado de uma partida, e o servidor confere o palpite contra os dados reais vindos
-da TxLINE. Toda aposta é resolvida por um contrato inteligente próprio na Solana
-(`oddies_bet`, devnet), que custodia os fundos, define o vencedor a partir do dado
-fornecido pelo backend (oráculo) e paga o prêmio sem intervenção manual.
-
-A combinação de **dados esportivos verificáveis (TxLINE)** + **liquidação on-chain
-(Solana)** é o núcleo do produto: o jogador não precisa confiar na plataforma para
-saber se o resultado do palpite foi apurado corretamente — o dado vem de um provedor
-terceiro e o pagamento é público e auditável na chain.
-
-Três jogos já estão jogáveis (hub em `#/jogos`):
-
-| Jogo | O que é | Rota |
-|---|---|---|
-| **Infinite Hi-Lo** | Compara estatísticas (gols, escanteios, posse, cartões) de partida em partida — maior ou menor — subindo uma escada de multiplicador a cada acerto, com cash-out a qualquer momento. | `#/hilo-infinito` |
-| **1X2 Markets** | Aposta parimutuel no resultado (casa/empate/fora) de partidas futuras da Copa; o pote é dividido entre quem acerta. | `#/mercados` |
-| **Penalty Predictor** | Modo relâmpago: prever gol ou defesa em cobranças de pênalti, com timer curto e multiplicadores por sequência de acertos. | `#/penalty` |
-
-Outros quatro (Hi-Lo apostado, Guess the Stats, Survivor, Live Challenge, Guess the
-Team) estão mapeados e em construção — detalhes em [`docs/jogos-disponiveis.md`](docs/jogos-disponiveis.md)
-e no plano completo em [`docs/plano-minigames.md`](docs/plano-minigames.md).
+<p align="center">
+  <img src="docs/assets/screen-landing-hero.png" alt="ChainPlay landing page" width="70%" />
+</p>
+<p align="center">
+  <img src="docs/assets/screen-landing-games.png" alt="Minigames showcase" width="45%" />
+  <img src="docs/assets/screen-games-hub.png" alt="Games hub" width="45%" />
+</p>
 
 ---
 
-## 2. Destaques técnicos
+## 1. The idea
 
-- **Contrato Solana próprio (`oddies_bet`, Anchor)** — programa deployado em devnet
-  que implementa dois padrões de mercado: `Parimutuel` (pote comunitário dividido
-  entre vencedores, casa sem risco, só cobra 10% de taxa) e `HouseBacked` (odds
-  fixas, a casa banca o prêmio com liquidez própria). Detalhes em
-  [`program/README.md`](program/README.md).
-- **Ticket-NFT por aposta** — cada palpite minta um SPL token (supply 1, autoridade
-  de mint revogada) na wallet do jogador; quem segura o token resgata o prêmio, e ele
-  é queimado no resgate (impossível resgatar duas vezes). Cada jogo tem sua própria
-  Collection NFT (`game_id`/`allowed_games`), então os tickets carregam a identidade
-  visual do jogo em que foram ganhos.
-- **Regra de ouro anti-fraude**: em qualquer modo com stake, a sequência de
-  perguntas/respostas é gerada e validada **no servidor**, nunca no navegador — o
-  cliente jamais sabe o próximo valor antes de o jogador palpitar. Verificado por
-  testes automatizados (a sequência secreta nunca aparece na API).
-- **Oráculo de dados**: o backend consome a TxLINE, faz cache local (TTL de 5 min) e
-  faz fallback para dados mock quando a API está indisponível, para o produto nunca
-  ficar fora do ar por uma falha externa.
-- **Tempo real via WebSocket** (`/ws/live`): o servidor faz poll da TxLINE (45s) e só
-  propaga os deltas (partidas que mudaram) para os clientes conectados — sem clients
-  ouvindo, não há poll, economizando cota da API.
-- **Autenticação sem fricção**: login social (Google) com custódia de wallet no
-  servidor, sem exigir extensão de carteira para experimentar o produto; wallet
-  adapters (Phantom, Solflare, Backpack) entram para quem quer jogar com fundos
-  próprios.
-- **Auditoria de segurança própria**: revisão sistemática de IDOR, tratamento de
-  erros e logging aplicada ao backend (ver [`docs/security-review.md`](docs/security-review.md) e
-  [`docs/audit-log-integracao.md`](docs/audit-log-integracao.md)), com correções
-  verificadas ao vivo contra o server local e a suíte `e2e:full` rodando contra a
-  devnet real (30/30 ✅).
+ChainPlay turns live World Cup statistics into fast, bettable minigames: the player
+predicts goals, corners, cards, ball possession or the outcome of a match, and the
+server checks the prediction against real data coming from **TxLINE**. Every bet is
+settled by our own Solana smart contract (`oddies_bet`, devnet), which escrows the
+funds, determines the winner from the data supplied by the backend (acting as oracle)
+and pays out the prize with no manual intervention.
 
-## 3. Destaques de negócio
+The combination of **verifiable sports data (TxLINE)** + **on-chain settlement
+(Solana)** is the core of the product: players don't have to trust the platform to
+know their prediction was graded correctly — the data comes from a third-party
+provider and the payout is public and auditable on-chain.
 
-- **Dado real de Copa do Mundo como diferencial**: em vez de RNG interno, todo
-  resultado é ancorado em estatísticas reais da competição via TxLINE — o produto
-  vende "jogo de skill/previsão sobre esporte real", não uma loteria disfarçada.
-- **Dois motores de monetização no mesmo contrato**: parimutuel (receita = taxa fixa
-  de 10%, zero risco de casa) para os modos sociais/multiplayer, e house-backed
-  (margem embutida nas odds) para os modos singleplayer de skill — cobrindo tanto
-  jogadores que quer apostar contra a comunidade quanto os que preferem odds fixas.
-- **Ativo colecionável embutido na aposta**: o ticket-NFT não é só um comprovante —
-  é transferível e vendável, e carrega a "marca" do jogo (Collection NFT por jogo),
-  abrindo espaço para secundário e para badges/conquistas por jogo.
-- **Baixa barreira de entrada**: modos demo sem stake para conhecer o jogo antes
-  de arriscar fundos, e stakes pequenos (a partir de 0,002 SOL) nos modos apostados.
+Three games are already playable (hub at `#/jogos`):
 
----
-
-## 4. Endpoints da TxLINE utilizados
-
-Toda a integração vive em [`server/src/txline/`](server/src/txline). São quatro
-chamadas à API da TxLINE, cobrindo o ciclo completo de ativação e consumo de dados:
-
-| Método | Endpoint | Uso | Onde |
+| | Game | What it is | Route |
 |---|---|---|---|
-| `POST` | `/auth/guest/start` | Inicia uma sessão de convidado e retorna o JWT usado nas chamadas seguintes. | [`txline/auth.ts`](server/src/txline/auth.ts) |
-| `POST` | `/api/token/activate` | Ativa o token de API da TxLINE a partir da assinatura on-chain (`txSig`) do plano free tier e de uma assinatura da wallet (`walletSignature`), vinculando a conta TxLINE à identidade Solana da plataforma. | [`txline/auth.ts`](server/src/txline/auth.ts) |
-| `GET` | `/api/fixtures/snapshot` | Lista o snapshot de partidas (fixtures) disponíveis, opcionalmente filtrado por `competitionId`. Usado para descobrir os jogos da Copa do Mundo e seus horários. | [`txline/data.ts`](server/src/txline/data.ts) |
-| `GET` | `/api/scores/snapshot/:fixtureId` | Retorna o snapshot de placar/estatísticas de uma partida específica (gols, escanteios, cartões, posse de bola, estado do jogo). É a fonte de verdade usada para decidir vitória/derrota nos jogos e para resolver os mercados on-chain. | [`txline/data.ts`](server/src/txline/data.ts) |
+| <img src="client/public/games/infinite-hi-lo.webp" width="90" /> | **Infinite Hi-Lo** | Compare stats (goals, corners, possession, cards) match after match — higher or lower — climbing a multiplier ladder with every correct call, cash out anytime. | `#/hilo-infinito` |
+| <img src="client/public/imgs/1x2.png" width="90" /> | **1X2 Markets** | Parimutuel betting on the outcome (home/draw/away) of upcoming World Cup matches; the pot is split among the winners. | `#/mercados` |
+| <img src="client/public/games/penalty-predictor.webp" width="90" /> | **Penalty Predictor** | Lightning mode: predict goal or save on penalty kicks, with a short timer and streak multipliers. | `#/penalty` |
 
-**Autenticação** em toda chamada autenticada: header `Authorization: Bearer <jwt>` +
-header `X-Api-Token: <apiToken>` (ver `createClient` em `txline/data.ts`).
+<p align="center">
+  <img src="docs/assets/screen-infinite-hilo.png" alt="Infinite Hi-Lo — prize ladder and stake selection" width="49%" />
+  <img src="docs/assets/screen-1x2-markets.png" alt="1X2 Markets — parimutuel pots on real World Cup fixtures" width="49%" />
+</p>
+<p align="center">
+  <sub><b>Infinite Hi-Lo</b> — stake once, climb the multiplier ladder, cash out anytime · <b>1X2 Markets</b> — live parimutuel pots on real fixtures, settled on-chain</sub>
+</p>
 
-**Fluxo de ativação** (`npm run subscribe`, ou automático no primeiro cache-miss do
-servidor): a plataforma assina o plano free tier do serviço da TxLINE **on-chain**
-(instrução `subscribe` do programa `txoracle` da própria TxLINE, devnet/mainnet),
-depois troca a assinatura on-chain (`txSig`) por um JWT (`/auth/guest/start`) e por um
-token de API (`/api/token/activate`), assinando a mensagem `txSig:leagues:jwt` com a
-wallet Solana da plataforma. As credenciais resultantes são cacheadas por até 26 dias
-(ver `MAX_AGE_MS` em `txline/auth.ts`) e podem ser injetadas via variáveis de ambiente
-(`TXLINE_JWT`, `TXLINE_API_TOKEN`) em ambientes read-only (Vercel).
-
----
-
-## 5. Feedback sobre a experiência com a API da TxLINE
-
-**O que mais gostamos:**
-
-- **O modelo de assinatura on-chain é coerente com o resto do produto.** Pagar/ativar
-  o acesso à API assinando uma transação na própria Solana (em vez de um cartão de
-  crédito ou chave manual num painel) encaixou naturalmente num projeto que já é
-  100% on-chain — não precisamos sair do ecossistema Solana para contratar o dado.
-- **O free tier é generoso o suficiente para prototipar e validar o produto inteiro**
-  sem custo, incluindo o fluxo de tempo real (mesmo que com delay de 60s no tier
-  gratuito), o que foi essencial num hackathon.
-- **Os snapshots de fixtures e scores são simples de consumir**: dois endpoints REST
-  cobrem tudo que os sete jogos do roadmap precisam (calendário + placar/estatísticas
-  por partida), sem exigir modelagem complexa no nosso lado.
-
-**Onde tivemos dificuldade:**
-
-- **Descoberta da API foi o maior atrito**: documentação sobre o fluxo completo de
-  ativação (assinatura on-chain → troca por JWT → troca por token de API →
-  assinatura de mensagem com a wallet) não estava centralizada num único lugar;
-  reconstruímos o fluxo lendo o IDL do programa `txoracle` e testando empiricamente
-  contra o ambiente de devnet.
-- **Encoding das estatísticas no snapshot de scores não é auto-descritivo**: as
-  chaves do payload de `scores/snapshot` são números (`period * 1000 + base_key`, ex.
-  `1`/`2` = gols P1/P2, `7`/`8` = escanteios) sem um schema público que mapeie esses
-  códigos — teve que ser feito por tentativa e erro comparando o snapshot com o placar
-  real das partidas até fechar o mapeamento usado em `extractStats` (`txline/data.ts`).
-- **Delay do free tier em devnet exige desenho defensivo**: com o tier gratuito
-  entregando dados com ~60s de atraso e, ocasionalmente, degradado, tivemos que
-  desenhar cache + fallback para dados mock desde o início (`games/matches.ts`) para
-  o produto continuar demonstrável mesmo se a TxLINE ficasse indisponível durante uma
-  demo ao vivo — algo que só um SLA/tier pago resolveria de fato.
-- **Reativação em loop no free tier** gerou rate-limit (`429`) do faucet de devnet
-  quando o cron de renovação de credenciais rodava com frequência maior que o
-  necessário; resolvido com um cooldown de 15 min entre tentativas de ativação no
-  nosso lado (ver achado registrado em [`docs/security-review.md`](docs/security-review.md)).
-
-No geral, a API da TxLINE cumpriu bem o papel de oráculo de dados esportivos
-verificáveis para o projeto — o principal ganho de produtividade viria de uma
-documentação mais explícita do fluxo de ativação on-chain e do schema de estatísticas
-do endpoint de scores.
+Four more (Staked Hi-Lo, Guess the Stats, Survivor, Live Challenge, Guess the Team)
+are mapped out and under construction — full game-by-game breakdown in the
+[Project Wiki](docs/README.md#-the-games).
 
 ---
 
-## 6. Estrutura do repositório
+## 2. Real data, on-chain: the TxLINE integration
+
+> 📐 **Deep dive:** the full engineering documentation — architecture diagrams, the
+> on-chain credential lifecycle, stat-decoding details, the resilience pipeline and
+> the TxLINE→Solana oracle loop, with links to every source file — lives in
+> [`docs/technical-integrations.md`](docs/technical-integrations.md).
+
+The entire integration lives in [`server/src/txline/`](server/src/txline), isolated
+from the rest of the backend as a self-contained module:
 
 ```
-client/    # frontend React + Vite (jogos, wallet, hub)
-server/    # backend Express (TxLINE, contrato Solana, WebSocket)
-program/   # contrato Anchor `oddies_bet` (Solana)
-NFTs/      # arte e metadata das collections dos tickets
-docs/      # planejamento, auditoria de segurança e documentação de apoio
+server/src/txline/
+├── auth.ts     # full credential lifecycle: on-chain subscription → JWT → API token,
+│               # 26-day cache, 15-min activation cooldown, env-var injection for read-only hosts
+├── data.ts     # authenticated HTTP client + fixtures/scores snapshots + stat decoding (extractStats)
+└── wallet.ts   # the platform's Solana wallet used to sign the subscription & activation messages
 ```
 
-Para rodar localmente: `npm run setup` seguido de `npm run dev` (sobe client e server
-em paralelo). Detalhes de configuração de rede/credenciais em
-[`server/src/config.ts`](server/src/config.ts).
+Nothing else in the codebase talks to TxLINE directly. Game logic
+([`server/src/games/matches.ts`](server/src/games/matches.ts)) consumes this module
+through a **5-minute local cache with a mock-data fallback**, so the product never
+goes down because of an external outage — and the realtime hub
+([`server/src/realtime/liveHub.ts`](server/src/realtime/liveHub.ts)) polls TxLINE
+every 45s **only while clients are connected**, pushing just the deltas over
+WebSocket (`/ws/live`) and saving API quota when nobody is watching.
+
+### Endpoints used
+
+Four calls cover the full activation-and-consumption cycle:
+
+| Method | Endpoint | Purpose | Where |
+|---|---|---|---|
+| `POST` | `/auth/guest/start` | Starts a guest session and returns the JWT used in subsequent calls. | [`txline/auth.ts`](server/src/txline/auth.ts) |
+| `POST` | `/api/token/activate` | Activates the TxLINE API token from the on-chain subscription signature (`txSig`) plus a wallet signature (`walletSignature`), binding the TxLINE account to the platform's Solana identity. | [`txline/auth.ts`](server/src/txline/auth.ts) |
+| `GET` | `/api/fixtures/snapshot` | Lists the snapshot of available fixtures, optionally filtered by `competitionId`. Used to discover World Cup matches and their schedules. | [`txline/data.ts`](server/src/txline/data.ts) |
+| `GET` | `/api/scores/snapshot/:fixtureId` | Returns the score/statistics snapshot for a specific match (goals, corners, cards, possession, match state). This is the source of truth used to grade predictions and settle the on-chain markets. | [`txline/data.ts`](server/src/txline/data.ts) |
+
+**Authentication** on every authenticated call: `Authorization: Bearer <jwt>` header +
+`X-Api-Token: <apiToken>` header (see `createClient` in `txline/data.ts`).
+
+**Activation flow** (`npm run subscribe`, or automatic on the server's first
+cache-miss): the platform subscribes to TxLINE's free tier **on-chain** (the
+`subscribe` instruction of TxLINE's own `txoracle` program, devnet/mainnet), then
+exchanges the on-chain signature (`txSig`) for a JWT (`/auth/guest/start`) and an API
+token (`/api/token/activate`), signing the message `txSig:leagues:jwt` with the
+platform's Solana wallet. The resulting credentials are cached for up to 26 days (see
+`MAX_AGE_MS` in `txline/auth.ts`) and can be injected via environment variables
+(`TXLINE_JWT`, `TXLINE_API_TOKEN`) on read-only hosts (Vercel).
+
+---
+
+## 3. Technical highlights
+
+- **Our own Solana program (`oddies_bet`, Anchor)** — deployed on devnet,
+  implementing two market patterns: `Parimutuel` (community pot split among winners,
+  zero house risk, flat 10% fee) and `HouseBacked` (fixed odds, the house backs the
+  prize with its own liquidity). Details in [`program/README.en.md`](program/README.en.md).
+- **One NFT ticket per bet** — every prediction mints an SPL token (supply 1, mint
+  authority revoked) into the player's wallet; whoever holds the token redeems the
+  prize, and it is burned on redemption (double-redeeming is impossible). Each game
+  has its own Collection NFT (`game_id`/`allowed_games`), so tickets carry the visual
+  identity of the game they were won in.
+- **Anti-fraud golden rule**: in any staked mode, the question/answer sequence is
+  generated and validated **on the server**, never in the browser — the client never
+  knows the next value before the player commits. Verified by automated tests (the
+  secret sequence never appears in the API).
+- **Data oracle**: the backend consumes TxLINE, caches locally (5-min TTL) and falls
+  back to mock data when the API is unavailable, so the product never goes down
+  because of an external failure.
+- **Realtime over WebSocket** (`/ws/live`): the server polls TxLINE (45s) and only
+  propagates deltas (matches that changed) to connected clients — no clients
+  listening, no polling, saving API quota.
+- **Frictionless auth**: social login (Google) with server-side wallet custody, no
+  browser extension required to try the product; wallet adapters (Phantom, Solflare,
+  Backpack) for players who want to play with their own funds.
+- **In-house security audit**: systematic review of IDOR, error handling and logging
+  applied to the backend (see [`docs/security-review.en.md`](docs/security-review.en.md)),
+  with fixes verified live against the local server and the `e2e:full` suite running
+  against real devnet (30/30 ✅).
+
+## 4. Business highlights
+
+- **Real World Cup data as the differentiator**: instead of internal RNG, every
+  outcome is anchored to real competition statistics via TxLINE — the product sells
+  "skill/prediction gaming over real sports", not a disguised lottery.
+- **Two monetization engines in the same contract**: parimutuel (revenue = flat 10%
+  fee, zero house risk) for the social/multiplayer modes, and house-backed (margin
+  built into the odds) for the single-player skill modes — covering both players who
+  want to bet against the community and those who prefer fixed odds.
+- **A collectible asset embedded in the bet**: the NFT ticket isn't just a receipt —
+  it's transferable and sellable, and carries the game's "brand" (one Collection NFT
+  per game), opening the door to secondary markets and per-game badges/achievements.
+- **Low barrier to entry**: demo modes with no stake to learn each game before
+  risking funds, and small stakes (from 0.002 SOL) in the betting modes.
+
+---
+
+## 5. How the codebase is organized
+
+```
+client/    # React + Vite frontend (games, wallet, hub)
+server/    # Express backend
+program/   # Anchor program `oddies_bet` (Solana)
+NFTs/      # ticket collection art & metadata
+docs/      # planning, security audit and supporting docs
+```
+
+The backend is split by responsibility, so each concern has exactly one home:
+
+```
+server/src/
+├── txline/     # TxLINE integration (auth lifecycle, data client, platform wallet)
+├── chain/      # Solana: program client, markets, runs, tickets, custodial wallets, NFT badges
+├── games/      # game logic & sessions (hi-lo, penalty, quiz, survivor, stats…) + cache/mock fallback
+├── http/       # Express layer: routes/, middleware, security headers, error mapping
+├── auth/       # Google, wallet & session auth + user store
+├── realtime/   # WebSocket live hub (/ws/live)
+├── store/      # JSON file persistence
+└── scripts/    # e2e suites against real devnet + NFT collection tooling
+```
+
+## 6. Running locally
+
+```bash
+npm run setup   # installs root, server and client deps
+npm run dev     # runs server + client concurrently
+```
+
+Network/credential configuration lives in
+[`server/src/config.ts`](server/src/config.ts). If port 3001 is taken, run the server
+with `PORT=<other>` and point the client at it with `API_PROXY=http://localhost:<other>`.
+
+---
+
+## 7. Feedback on the TxLINE API experience
+
+**What we liked most:**
+
+- **The on-chain subscription model is coherent with the rest of the product.**
+  Paying for/activating API access by signing a transaction on Solana itself (rather
+  than a credit card or a manual key in a dashboard) fit naturally into a project
+  that is already 100% on-chain — we never had to leave the Solana ecosystem to buy
+  the data.
+- **The free tier is generous enough to prototype and validate the entire product**
+  at no cost, including the realtime flow (even with the 60s delay on the free
+  tier), which was essential in a hackathon.
+- **The fixtures and scores snapshots are simple to consume**: two REST endpoints
+  cover everything the seven games on the roadmap need (schedule + per-match
+  score/stats), with no complex modelling on our side.
+
+**Where we struggled:**
+
+- **API discovery was the biggest friction**: documentation for the full activation
+  flow (on-chain signature → JWT exchange → API-token exchange → wallet-signed
+  message) wasn't centralized in one place; we reconstructed the flow by reading the
+  `txoracle` program's IDL and testing empirically against devnet.
+- **The stats encoding in the scores snapshot is not self-describing**: the payload
+  keys of `scores/snapshot` are numbers (`period * 1000 + base_key`, e.g. `1`/`2` =
+  P1/P2 goals, `7`/`8` = corners) with no public schema mapping those codes — we had
+  to work it out by trial and error, comparing snapshots against real match scores
+  until the mapping used in `extractStats` (`txline/data.ts`) was complete.
+- **The free-tier delay on devnet demands defensive design**: with the free tier
+  delivering data ~60s late and occasionally degraded, we had to design cache + mock
+  fallback from day one (`games/matches.ts`) so the product stays demoable even if
+  TxLINE goes down during a live demo — something only an SLA/paid tier would truly
+  solve.
+- **Re-activation loops on the free tier** triggered devnet faucet rate-limits
+  (`429`) when our credential-renewal cron ran more often than necessary; fixed with
+  a 15-min cooldown between activation attempts on our side (finding recorded in
+  the [security review](docs/security-review.en.md)).
+
+Overall, the TxLINE API served its role as a verifiable sports-data oracle well —
+the biggest productivity win would come from more explicit documentation of the
+on-chain activation flow and of the stats schema in the scores endpoint.
