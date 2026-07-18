@@ -610,7 +610,6 @@ const pt = {
   auth: {
     title: "Entre para jogar valendo SOL",
     withWallet: "🔗 Conectar wallet",
-    asGuest: "Entrar como convidado (devnet)",
     logout: "sair",
     addressLabel: "Wallet address",
     copy: "Copy",
@@ -620,9 +619,9 @@ const pt = {
     googleSetupHint:
       "Login com Google: defina GOOGLE_CLIENT_ID no server/.env e VITE_GOOGLE_CLIENT_ID no client/.env (OAuth Client ID do Google Cloud, origem http://localhost:5173).",
     noWalletHint:
-      "Sem extensão de wallet? Use o Google ou o modo convidado — criamos uma conta custodial de devnet pra você.",
+      "Sem extensão de wallet? Entre com o Google — criamos uma conta custodial de devnet pra você.",
     apiOfflineHint:
-      "API fora do ar — login social/convidado indisponível. Conecte sua wallet (web3 connect): as apostas vão direto pra chain. Pra reativar tudo, suba o server: cd server && npm run dev.",
+      "API fora do ar — login social indisponível. Conecte sua wallet (web3 connect): as apostas vão direto pra chain. Pra reativar tudo, suba o server: cd server && npm run dev.",
     custodialBadge: (name: string) => `conta custodial · ${name}`,
     custodialBalance: (sol: string) => `saldo: ${sol}`,
     custodialFund: (addr: string) =>
@@ -1699,7 +1698,6 @@ const en: Dict = {
   auth: {
     title: "Sign in to play for SOL",
     withWallet: "🔗 Connect wallet",
-    asGuest: "Continue as guest (devnet)",
     logout: "logout",
     addressLabel: "Wallet address",
     copy: "Copy",
@@ -1709,9 +1707,9 @@ const en: Dict = {
     googleSetupHint:
       "Google login: set GOOGLE_CLIENT_ID in server/.env and VITE_GOOGLE_CLIENT_ID in client/.env (Google Cloud OAuth Client ID, origin http://localhost:5173).",
     noWalletHint:
-      "No wallet extension? Use Google or guest mode — we create a devnet custodial account for you.",
+      "No wallet extension? Sign in with Google — we create a devnet custodial account for you.",
     apiOfflineHint:
-      "API is down — social/guest login unavailable. Connect your wallet (web3 connect): bets go straight on-chain. To restore everything, start the server: cd server && npm run dev.",
+      "API is down — social login unavailable. Connect your wallet (web3 connect): bets go straight on-chain. To restore everything, start the server: cd server && npm run dev.",
     custodialBadge: (name: string) => `custodial account · ${name}`,
     custodialBalance: (sol: string) => `balance: ${sol}`,
     custodialFund: (addr: string) =>

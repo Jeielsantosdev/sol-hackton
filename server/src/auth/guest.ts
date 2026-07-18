@@ -12,11 +12,13 @@ const guestCreations: number[] = [];
 const GUEST_WINDOW_MS = 60 * 60 * 1000;
 const MAX_GUESTS_PER_WINDOW = 20;
 
-/** Convidado (devnet): conta custodial sem Google — útil pra testar o fluxo
- *  social completo sem configurar OAuth. Desative com ALLOW_GUEST=0. */
+/** Convidado (devnet): conta custodial descartável usada SÓ pela suíte e2e e
+ *  em dev — a conta é irrecuperável (UUID + localStorage) e cada criação torra
+ *  o bônus da authority, então não existe como opção de login do produto.
+ *  Desligado por padrão; habilite explicitamente com ALLOW_GUEST=1. */
 export async function loginAsGuest(): Promise<SessionInfo> {
-  if (process.env.ALLOW_GUEST === "0") {
-    throw new HttpError(403, "modo convidado desativado");
+  if (process.env.ALLOW_GUEST !== "1") {
+    throw new HttpError(403, "modo convidado desativado (dev/e2e: ALLOW_GUEST=1)");
   }
   const now = Date.now();
   while (guestCreations.length && now - guestCreations[0] > GUEST_WINDOW_MS) {
