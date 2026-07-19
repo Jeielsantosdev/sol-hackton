@@ -4,14 +4,14 @@ import type { GameMatch } from "./matches.js";
 // disponível — mesmo formato do dado real, então o front não sabe a diferença.
 
 const TEAMS = [
-  "Brasil", "Argentina", "França", "Inglaterra", "Espanha", "Alemanha",
-  "Portugal", "Holanda", "Bélgica", "Croácia", "Uruguai", "Colômbia",
-  "México", "Estados Unidos", "Canadá", "Japão", "Coreia do Sul", "Austrália",
-  "Marrocos", "Senegal", "Nigéria", "Egito", "Gana", "Camarões",
-  "Suíça", "Dinamarca", "Polônia", "Sérvia", "Áustria", "Ucrânia",
-  "Equador", "Paraguai", "Chile", "Peru", "Venezuela", "Costa Rica",
-  "Panamá", "Jamaica", "Arábia Saudita", "Irã", "Catar", "Uzbequistão",
-  "Jordânia", "Argélia", "Tunísia", "Costa do Marfim", "Noruega", "Escócia",
+  "Brazil", "Argentina", "France", "England", "Spain", "Germany",
+  "Portugal", "Netherlands", "Belgium", "Croatia", "Uruguay", "Colombia",
+  "Mexico", "United States", "Canada", "Japan", "South Korea", "Australia",
+  "Morocco", "Senegal", "Nigeria", "Egypt", "Ghana", "Cameroon",
+  "Switzerland", "Denmark", "Poland", "Serbia", "Austria", "Ukraine",
+  "Ecuador", "Paraguay", "Chile", "Peru", "Venezuela", "Costa Rica",
+  "Panama", "Jamaica", "Saudi Arabia", "Iran", "Qatar", "Uzbekistan",
+  "Jordan", "Algeria", "Tunisia", "Ivory Coast", "Norway", "Scotland",
 ];
 
 function mulberry32(seed: number) {
@@ -36,12 +36,12 @@ function poisson(rand: () => number, lambda: number): number {
 }
 
 const STAGES: Array<[string, number]> = [
-  ["Fase de Grupos", 72],
-  ["16 avos de final", 16],
-  ["Oitavas de final", 8],
-  ["Quartas de final", 4],
-  ["Semifinal", 2],
-  ["Disputa de 3º lugar", 1],
+  ["Group Stage", 72],
+  ["Round of 32", 16],
+  ["Round of 16", 8],
+  ["Quarter-finals", 4],
+  ["Semi-final", 2],
+  ["Third Place Playoff", 1],
   ["Final", 1],
 ];
 
