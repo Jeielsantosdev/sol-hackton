@@ -2132,7 +2132,7 @@ const en: Dict = {
 
   penaltySession: {
     freeTab: " Free (ranking)",
-    stakedTab: " Bet",
+    stakedTab: "Staked mode",
     chooseTarget: "Hit target across the 8 penalties",
     targetLabel: (n: number) => `${n} of 8`,
     start: " Create",

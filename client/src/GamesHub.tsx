@@ -104,7 +104,12 @@ export default function GamesHub() {
             const inner = (
               <>
                 {g.art ? (
-                  <img className="game-card-art" src={g.art} alt={info.name} loading="lazy" />
+                  <img
+                    className={`game-card-art game-card-art--${g.id}`}
+                    src={g.art}
+                    alt={info.name}
+                    loading="lazy"
+                  />
                 ) : (
                   <div className="game-card-fallback" aria-hidden="true">
                     {g.icon}

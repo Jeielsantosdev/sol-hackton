@@ -3569,6 +3569,14 @@ a.game-card:hover {
   object-fit: cover;
 }
 
+.game-card-art--markets1x2 {
+  object-position: center 0.1%;
+}
+
+.game-card-art--penalty {
+  object-position: center 100%;
+}
+
 .game-card-fallback {
   position: absolute;
   inset: 0;
