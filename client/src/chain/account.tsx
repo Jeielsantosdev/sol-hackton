@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { useWallet } from "./wallet";
-import { api } from "./http";
+import { api, ApiError } from "./http";
 import { claimTicket, placeBet as walletPlaceBet, type PlacedBet } from "./oddies";
 import { useLang } from "../i18n";
 
@@ -102,19 +102,42 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // valida a sessão persistida e busca o saldo custodial
+  // token da sessão ativa: respostas atrasadas de uma sessão anterior são descartadas
+  const tokenRef = useRef<string | null>(null);
+
+  // valida a sessão e busca o saldo real. Roda no load, a cada 30s e logo após
+  // apostar/resgatar — antes era uma busca única e o saldo ficava congelado até
+  // um F5, parecendo que a aposta "não descontava" da wallet.
+  const refreshBalance = useCallback(async () => {
+    const token = tokenRef.current;
+    if (!token) return;
+    try {
+      const me = await api("/api/auth/me", undefined, token);
+      if (tokenRef.current === token) setCustodialBalance(me.balance);
+    } catch (e) {
+      if (tokenRef.current !== token) return;
+      // Só o server rejeitando o token invalida a sessão. Falha de rede,
+      // 502 de cold start ou deploy em andamento NÃO podem apagar uma
+      // sessão válida por 7 dias — era isso que deslogava todo mundo.
+      if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+        localStorage.removeItem(SESSION_KEY);
+        setSession(null);
+        siwsAttempted.current = null; // wallet conectada pode refazer o SIWS
+      }
+    }
+  }, []);
+
   useEffect(() => {
+    tokenRef.current = session?.token ?? null;
     if (!session) {
       setCustodialBalance(null);
       return;
     }
-    api("/api/auth/me", undefined, session.token)
-      .then((me) => setCustodialBalance(me.balance))
-      .catch(() => {
-        localStorage.removeItem(SESSION_KEY);
-        setSession(null);
-      });
-  }, [session?.token]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (apiOffline) return; // re-tenta quando a API voltar (dep abaixo)
+    refreshBalance();
+    const timer = window.setInterval(refreshBalance, 30_000);
+    return () => window.clearInterval(timer);
+  }, [session?.token, apiOffline, refreshBalance]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function adoptSession(info: SessionInfo) {
     localStorage.setItem(SESSION_KEY, JSON.stringify(info));
@@ -154,7 +177,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wallet.address, wallet.signMessage, apiOffline]);
+  }, [wallet.address, wallet.signMessage, apiOffline, session]);
 
   const loginGoogle = useCallback(async (credential: string) => {
     setBusy(true);
@@ -196,7 +219,9 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       gameId?: number
     ): Promise<PlacedBet> => {
       if (wallet.address && wallet.provider) {
-        return walletPlaceBet(wallet.provider, marketId, outcome, lamports, gameId);
+        const placed = await walletPlaceBet(wallet.provider, marketId, outcome, lamports, gameId);
+        void refreshBalance();
+        return placed;
       }
       if (session) {
         const r = await api(
@@ -204,26 +229,29 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           { marketId, outcome, lamports, gameId },
           session.token
         );
+        void refreshBalance();
         return { ...r, bet: "" };
       }
       throw new Error("connect a wallet or log in first");
     },
-    [wallet.address, wallet.provider, session]
+    [wallet.address, wallet.provider, session, refreshBalance]
   );
 
   const claim = useCallback(
     async (market: string, ticketMint: string, ticketAccount: string) => {
       if (wallet.address && wallet.provider) {
         await claimTicket(wallet.provider, market, ticketMint, ticketAccount);
+        void refreshBalance();
         return;
       }
       if (session) {
         await api("/api/custodial/claim", { market, ticketMint, ticketAccount }, session.token);
+        void refreshBalance();
         return;
       }
       throw new Error("connect a wallet or log in first");
     },
-    [wallet.address, wallet.provider, session]
+    [wallet.address, wallet.provider, session, refreshBalance]
   );
 
   return (

@@ -340,14 +340,21 @@ export async function settleFixtureMarkets() {
     try {
       if (goals) {
         const winning = winnerFromGoals(goals[0], goals[1]);
-        await chain.program.methods
-          .resolveMarket(winning)
-          .accounts({
-            config: configPda(),
-            market: marketPda(new BN(rec.marketId)),
-            authority: chain.authority.publicKey,
-          })
-          .rpc();
+        try {
+          await chain.program.methods
+            .resolveMarket(winning)
+            .accounts({
+              config: configPda(),
+              market: marketPda(new BN(rec.marketId)),
+              authority: chain.authority.publicKey,
+            })
+            .rpc();
+        } catch (e) {
+          // 6004 (MarketNotOpen) = já resolvido/cancelado numa passada anterior
+          // que falhou antes de salvar o status — adota o estado on-chain em vez
+          // de re-tentar pra sempre (mesma idempotência do settleRuns)
+          if (!/MarketNotOpen|6004/i.test((e as Error).message)) throw e;
+        }
         // On-chain o mercado pode virar Voided (parimutuel sem vencedores).
         const onchain: any = await (chain.program.account as any).market.fetch(
           marketPda(new BN(rec.marketId))
@@ -358,15 +365,23 @@ export async function settleFixtureMarkets() {
           `[markets] resolvido ${rec.home} ${goals[0]}×${goals[1]} ${rec.away} → outcome ${winning} (${rec.status})`
         );
       } else if (now > rec.resolveAfterTs + CANCEL_AFTER_S) {
-        await chain.program.methods
-          .cancelMarket()
-          .accounts({
-            config: configPda(),
-            market: marketPda(new BN(rec.marketId)),
-            authority: chain.authority.publicKey,
-          })
-          .rpc();
-        rec.status = "voided";
+        try {
+          await chain.program.methods
+            .cancelMarket()
+            .accounts({
+              config: configPda(),
+              market: marketPda(new BN(rec.marketId)),
+              authority: chain.authority.publicKey,
+            })
+            .rpc();
+          rec.status = "voided";
+        } catch (e) {
+          if (!/MarketNotOpen|6004/i.test((e as Error).message)) throw e;
+          const onchain: any = await (chain.program.account as any).market.fetch(
+            marketPda(new BN(rec.marketId))
+          );
+          rec.status = marketStateLabel(onchain.state);
+        }
         console.log(`[markets] cancelado (sem resultado): market_id=${rec.marketId}`);
       }
       saveStore();

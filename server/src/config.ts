@@ -31,7 +31,9 @@ export const SELECTED_LEAGUES: number[] = [];
 
 export const PORT = Number(process.env.PORT || 3001);
 
-// Na Vercel o filesystem é somente leitura, exceto /tmp
-export const DATA_DIR = process.env.VERCEL
-  ? "/tmp/hilo-data/"
-  : new URL("../.data/", import.meta.url).pathname;
+// Na Vercel o filesystem é somente leitura, exceto /tmp. DATA_DIR por env
+// permite apontar pra um volume persistente (Railway: sem isso cada deploy
+// apaga sessões e wallets custodiais).
+export const DATA_DIR =
+  process.env.DATA_DIR ??
+  (process.env.VERCEL ? "/tmp/hilo-data/" : new URL("../.data/", import.meta.url).pathname);

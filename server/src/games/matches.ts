@@ -53,8 +53,10 @@ async function fetchFromTxline(): Promise<GameData> {
     throw new Error("Nenhum fixture da Copa do Mundo retornado pela TxLINE");
   }
 
+  // partidas em andamento contam: com o delay do free tier (~60s) as stats
+  // reais já fluem durante o jogo — quem ainda não tem stats é descartado abaixo
   const now = Date.now();
-  const started = fixtures.filter((f) => f.StartTime < now - 2 * 60 * 60 * 1000);
+  const started = fixtures.filter((f) => f.StartTime < now);
 
   const matches: GameMatch[] = [];
   // Busca sequencial com pequeno paralelismo para não estourar timeouts
