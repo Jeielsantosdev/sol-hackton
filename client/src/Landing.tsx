@@ -555,11 +555,11 @@ export default function Landing() {
           <nav className="footer-col" aria-label={t.footer.resources}>
             <strong className="footer-heading">{t.footer.resources}</strong>
             {/* href="#" temporário — apontar para as páginas legais quando existirem */}
-            <a href="#">{t.footer.terms}</a>
-            <a href="#">{t.footer.privacy}</a>
-            <a href="#">{t.footer.responsible}</a>
-            <a href="#">{t.footer.disclosures}</a>
-            <a href="#">{t.footer.brand}</a>
+            <a href="/terms">{t.footer.terms}</a>
+            <a href="/privacy">{t.footer.privacy}</a>
+            <a href="/responsible-gaming">{t.footer.responsible}</a>
+            <a href="/disclosures">{t.footer.disclosures}</a>
+            <a href="/brand">{t.footer.brand}</a>
           </nav>
 
           {/* coluna Products */}

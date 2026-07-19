@@ -327,6 +327,8 @@ export default function Arcade({ game }: { game: ArcadeGame }) {
           <LiveBadge token={account.token} refreshKey={lbKey} />
         )}
 
+        <p className="dim devnet-note center">{t.staked.devnetNote}<a className="faucet-link" href="https://faucet.solana.com/" target="_blank" rel="noreferrer">faucet.solana.com</a>.</p>
+
         <Leaderboard
           url={`/api/arcade/${game}/leaderboard`}
           you={account.address}
@@ -725,7 +727,7 @@ function StakedPenalty() {
               )}
             </button>
           </div>
-          <p className="dim devnet-note">{t.staked.devnetNote}</p>
+          <p className="dim devnet-note">{t.staked.devnetNote}<a className="faucet-link" href="https://faucet.solana.com/" target="_blank" rel="noreferrer">faucet.solana.com</a>.</p>
         </>
       )}
 

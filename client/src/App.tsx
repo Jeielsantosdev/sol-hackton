@@ -5,6 +5,7 @@ import GamesHub from "./GamesHub";
 import GuessStats from "./GuessStats";
 import GuessTeam from "./GuessTeam";
 import Landing from "./Landing";
+import LegalPage, { type LegalPageId } from "./LegalPage";
 import Markets from "./Markets";
 import StakedHilo from "./StakedHilo";
 import Survivor from "./Survivor";
@@ -42,7 +43,19 @@ export default function App() {
       return <Markets />;
     case "#/carteira":
       return <WalletPage />;
-    default:
+    default: {
+      // subpáginas institucionais com caminho real (/terms etc., como na referência);
+      // âncoras do sumário (#acceptance…) mudam o hash mas caem aqui e mantêm a página
+      const legal: Record<string, LegalPageId> = {
+        "/terms": "terms",
+        "/privacy": "privacy",
+        "/responsible-gaming": "responsible",
+        "/disclosures": "disclosures",
+        "/brand": "brand",
+      };
+      const page = legal[window.location.pathname];
+      if (page) return <LegalPage page={page} />;
       return <Landing />;
+    }
   }
 }

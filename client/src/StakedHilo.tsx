@@ -444,7 +444,7 @@ export default function StakedHilo({ mode = "target" }: { mode?: RunMode }) {
                   </p>
                 </>
               )}
-              <p className="dim devnet-note center">{t.staked.devnetNote}</p>
+              <p className="dim devnet-note center">{t.staked.devnetNote}<a className="faucet-link" href="https://faucet.solana.com/" target="_blank" rel="noreferrer">faucet.solana.com</a>.</p>
             </div>
             </div>
           </section>

@@ -354,7 +354,7 @@ export default function StakedSession({
           >
             {phase === "creating" ? labels.creating : labels.start}
           </button>
-          <p className="dim devnet-note">{t.staked.devnetNote}</p>
+          <p className="dim devnet-note">{t.staked.devnetNote}<a className="faucet-link" href="https://faucet.solana.com/" target="_blank" rel="noreferrer">faucet.solana.com</a>.</p>
         </>
       )}
 

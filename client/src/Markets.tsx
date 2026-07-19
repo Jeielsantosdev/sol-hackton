@@ -278,6 +278,8 @@ export default function Markets() {
           <p className="dim center mkt-note">{t.marketsUi.estNote}</p>
         )}
 
+        <p className="dim devnet-note center">{t.staked.devnetNote}<a className="faucet-link" href="https://faucet.solana.com/" target="_blank" rel="noreferrer">faucet.solana.com</a>.</p>
+
         <footer>{t.game.gameFooter}</footer>
       </div>
     </div>

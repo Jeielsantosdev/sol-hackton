@@ -661,7 +661,7 @@ const pt = {
     playAgain: "↻ Nova run",
     seeWallet: "Ver meus tickets →",
     error: "Algo deu errado",
-    devnetNote: "SOL de devnet — sem valor real. Pegue no faucet.solana.com.",
+    devnetNote: "SOL de devnet — sem valor real. Pegue no ",
     bettingAs: (name: string) => `Apostando como ${name}`,
     balanceLabel: "saldo",
     insufficient: (stake: string) =>
@@ -1748,7 +1748,7 @@ const en: Dict = {
     playAgain: "↻ New run",
     seeWallet: "See my tickets →",
     error: "Something went wrong",
-    devnetNote: "Devnet SOL — no real value. Grab some at faucet.solana.com.",
+    devnetNote: "Devnet SOL — no real value. Grab some at ",
     bettingAs: (name: string) => `Betting as ${name}`,
     balanceLabel: "balance",
     insufficient: (stake: string) =>
