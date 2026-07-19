@@ -69,7 +69,7 @@ const RUN_OUTCOME_LOSE = 1;
 // Infinite: janela pra responder cada rodada (mesmo valor do Penalty Predictor,
 // server/src/games/arcade.ts PENALTY_WINDOW_MS) — resposta fora do prazo conta
 // como erro, mesmo que o palpite estivesse certo.
-const ROUND_ANSWER_MS = 2_000;
+const ROUND_ANSWER_MS = 3_000;
 
 export type RunMode = "target" | "infinite";
 
