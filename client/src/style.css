@@ -235,6 +235,13 @@ h1 .accent {
   letter-spacing: 0.1em;
 }
 
+.match-year {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
 .value {
   font-size: 3.2rem;
   font-weight: 800;
@@ -5481,6 +5488,67 @@ ol.hilo-steps.hilo-steps-rich {
   background: var(--brand);
   transform-origin: left center;
   transition: transform 1s linear;
+}
+
+.hilo-round-timer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 4px 6px;
+  width: 100%;
+  max-width: 220px;
+  margin: 0 auto 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.hilo-round-timer-icon {
+  font-size: 0.9rem;
+  line-height: 1;
+  animation: hilo-round-timer-tick 1s linear infinite;
+}
+
+.hilo-round-timer.urgent {
+  color: var(--danger, #e5484d);
+}
+
+.hilo-round-timer.urgent .hilo-round-timer-icon {
+  animation: hilo-round-timer-tick 0.3s linear infinite;
+}
+
+.hilo-round-timer-bar {
+  width: 100%;
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.hilo-round-timer-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 9999px;
+  background: var(--brand);
+  transform-origin: left center;
+  transition: transform 0.1s linear;
+}
+
+.hilo-round-timer.urgent .hilo-round-timer-fill {
+  background: var(--danger, #e5484d);
+}
+
+@keyframes hilo-round-timer-tick {
+  0%, 100% { transform: rotate(-8deg); }
+  50% { transform: rotate(8deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hilo-round-timer-icon {
+    animation: none;
+  }
 }
 
 /* ---------- telas finais: vitória, saque, derrota ---------- */

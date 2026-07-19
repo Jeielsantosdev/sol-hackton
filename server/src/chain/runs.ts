@@ -66,6 +66,10 @@ export const MAX_PAYOUT_LAMPORTS = 0.3 * LAMPORTS_PER_SOL;
 const BET_WINDOW_S = 180; // jogador tem 3min pra assinar o place_bet
 const RUN_OUTCOME_WIN = 0;
 const RUN_OUTCOME_LOSE = 1;
+// Infinite: janela pra responder cada rodada (mesmo valor do Penalty Predictor,
+// server/src/games/arcade.ts PENALTY_WINDOW_MS) — resposta fora do prazo conta
+// como erro, mesmo que o palpite estivesse certo.
+const ROUND_ANSWER_MS = 2_000;
 
 export type RunMode = "target" | "infinite";
 
@@ -74,6 +78,7 @@ export type RunCategory = "goals" | "corners" | "yellowCards" | "possession";
 interface RunRound {
   home: string;
   away: string;
+  year: number;
   category: RunCategory;
   value: number;
   goals: [number, number];
@@ -114,6 +119,8 @@ export interface RunRecord {
   index: number;
   /** sequência secreta: nunca sai inteira pro client */
   rounds: RunRound[];
+  /** infinite: prazo (epoch ms) pra responder a rodada atual */
+  roundExpiresAt?: number;
   createdAt: number;
 }
 
@@ -174,6 +181,7 @@ async function buildRounds(target: number): Promise<RunRound[]> {
     return {
       home: m.home,
       away: m.away,
+      year: new Date(m.startTime).getUTCFullYear(),
       category,
       value: statValue(m, category),
       goals: m.stats.goals,
@@ -210,10 +218,17 @@ export function runView(run: RunRecord) {
     resolveAfterTs: run.resolveAfterTs,
     status: run.status,
     streak: run.streak,
+    roundExpiresAt: mode === "infinite" ? run.roundExpiresAt ?? 0 : 0,
     current: current
-      ? { home: current.home, away: current.away, category: current.category, value: current.value }
+      ? {
+          home: current.home,
+          away: current.away,
+          year: current.year,
+          category: current.category,
+          value: current.value,
+        }
       : null,
-    next: next ? { home: next.home, away: next.away, category: next.category } : null,
+    next: next ? { home: next.home, away: next.away, year: next.year, category: next.category } : null,
   };
 }
 
@@ -381,6 +396,25 @@ export function getRun(id: string): RunRecord | undefined {
   return loadStore().runs.find((r) => r.id === id);
 }
 
+/** Consulta da run tentando destravar awaiting_bet → playing (best-effort):
+ *  é assim que a primeira rodada arma o roundExpiresAt (infinite) — sem essa
+ *  chamada, a run só vira "playing" (e o timer só é armado) no primeiro guess,
+ *  tarde demais pra a primeira pergunta ter um prazo visível. Se a confirmação
+ *  on-chain ainda não chegou, segue em awaiting_bet e o client tenta de novo. */
+export async function refreshRun(id: string, user: UserRecord) {
+  const run = getRun(id);
+  if (!run) throw new HttpError(404, "run não encontrada");
+  assertRunOwner(run, user);
+  if (run.status === "awaiting_bet") {
+    try {
+      await ensureBetPlaced(run);
+    } catch {
+      /* aposta ainda não confirmada on-chain — o client tenta de novo */
+    }
+  }
+  return runView(run);
+}
+
 /** Confirma que o place_bet do jogador chegou on-chain antes de liberar o jogo. */
 async function ensureBetPlaced(run: RunRecord) {
   if (run.status !== "awaiting_bet") return;
@@ -393,6 +427,7 @@ async function ensureBetPlaced(run: RunRecord) {
     throw new HttpError(400, "aposta ainda não confirmada on-chain — assine o place_bet primeiro");
   }
   run.status = "playing";
+  if ((run.mode ?? "target") === "infinite") run.roundExpiresAt = Date.now() + ROUND_ANSWER_MS;
   saveStore();
 }
 
@@ -413,9 +448,13 @@ export async function guessRun(id: string, dir: "higher" | "lower", user: UserRe
     throw new HttpError(409, "run sem cartas restantes");
   }
 
-  const push = next.value === current.value;
+  const infinite = (run.mode ?? "target") === "infinite";
+  const late = infinite && !!run.roundExpiresAt && Date.now() > run.roundExpiresAt;
+
+  const push = !late && next.value === current.value;
   const correct =
-    push || (dir === "higher" ? next.value > current.value : next.value < current.value);
+    !late &&
+    (push || (dir === "higher" ? next.value > current.value : next.value < current.value));
 
   if (correct && !push) run.streak += 1;
   run.index += 1;
@@ -426,13 +465,23 @@ export async function guessRun(id: string, dir: "higher" | "lower", user: UserRe
   } else if (run.streak >= run.target) {
     run.status = "won";
     run.finalOutcome = RUN_OUTCOME_WIN;
+  } else if (infinite) {
+    run.roundExpiresAt = Date.now() + ROUND_ANSWER_MS;
   }
   saveStore();
 
   return {
     correct,
     push,
-    revealed: { home: next.home, away: next.away, category: next.category, value: next.value, goals: next.goals },
+    late,
+    revealed: {
+      home: next.home,
+      away: next.away,
+      year: next.year,
+      category: next.category,
+      value: next.value,
+      goals: next.goals,
+    },
     ...runView(run),
   };
 }

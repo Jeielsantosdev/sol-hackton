@@ -20,6 +20,7 @@ export type RunMode = "target" | "infinite";
 interface RunCardInfo {
   home: string;
   away: string;
+  year: number;
   category: StatCategory;
   value?: number;
   goals?: [number, number];
@@ -40,6 +41,8 @@ interface RunState {
   closeTs: number;
   status: string;
   streak: number;
+  /** infinite: prazo (epoch ms) pra responder a rodada atual */
+  roundExpiresAt?: number;
   current: RunCardInfo | null;
   next: RunCardInfo | null;
 }
@@ -62,6 +65,9 @@ const INFINITE_STAKE_PRESETS = [0.002, 0.005, 0.01];
 const ROLL_DURATION = 1000;
 // janela de assinatura do mercado (só pra barra de progresso do countdown)
 const BET_WINDOW_S = 3 * 60;
+// infinite: janela pra responder cada rodada — mesmo valor do server
+// (server/src/chain/runs.ts ROUND_ANSWER_MS), só pra barra de progresso
+const ROUND_ANSWER_MS = 2_000;
 
 export default function StakedHilo({ mode = "target" }: { mode?: RunMode }) {
   const { t } = useLang();
@@ -92,6 +98,7 @@ export default function StakedHilo({ mode = "target" }: { mode?: RunMode }) {
   const [claiming, setClaiming] = useState(false);
   const [claimed, setClaimed] = useState(false);
   const [secondsToClose, setSecondsToClose] = useState(0);
+  const [roundLeftMs, setRoundLeftMs] = useState(0);
   const revealTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
@@ -153,6 +160,28 @@ export default function StakedHilo({ mode = "target" }: { mode?: RunMode }) {
     return () => window.clearInterval(id);
   }, [phase, run]);
 
+  // infinite: countdown pra responder a rodada atual (2s, igual ao Penalty
+  // Predictor) — estourar o prazo conta como erro no server mesmo que o
+  // palpite enviado depois estivesse certo.
+  useEffect(() => {
+    if (!infinite || phase !== "playing" || !run?.roundExpiresAt) {
+      setRoundLeftMs(0);
+      return;
+    }
+    const deadline = run.roundExpiresAt;
+    setRoundLeftMs(Math.max(0, deadline - Date.now()));
+    const id = window.setInterval(() => {
+      const left = deadline - Date.now();
+      setRoundLeftMs(Math.max(0, left));
+      if (left <= 0) {
+        window.clearInterval(id);
+        guess("higher");
+      }
+    }, 100);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [infinite, phase, run?.roundExpiresAt]);
+
   // depois de ganhar, espera o cron liquidar pra liberar o claim
   useEffect(() => {
     if (phase !== "won" || !run || settled) return;
@@ -201,6 +230,15 @@ export default function StakedHilo({ mode = "target" }: { mode?: RunMode }) {
       const placed = await account.placeBet(run.marketId, 0, run.stakeLamports);
       setTicket(placed);
       playSfx("click");
+      try {
+        // confirma no server que a aposta chegou on-chain — é o que arma o
+        // roundExpiresAt da 1ª rodada (infinite); sem isso o timer só nasce
+        // no 1º guess, tarde demais pra a primeira pergunta ter prazo visível
+        const fresh = await api(`/api/runs/${run.id}`, undefined, account.token);
+        setRun((old) => ({ ...(old as RunState), ...fresh }));
+      } catch {
+        /* segue mesmo assim — o 1º guess confirma e arma o timer */
+      }
       setPhase("playing");
     } catch (e) {
       console.error("[hilo] assinatura da aposta falhou:", e);
@@ -612,6 +650,28 @@ export default function StakedHilo({ mode = "target" }: { mode?: RunMode }) {
                     t={t}
                   />
                 )}
+                {infinite && phase === "playing" && (
+                  <div
+                    className={`hilo-round-timer ${
+                      roundLeftMs > 0 && roundLeftMs <= 600 ? "urgent" : ""
+                    }`}
+                    role="timer"
+                    aria-live="off"
+                  >
+                    <span className="hilo-round-timer-icon" aria-hidden="true">
+                      ⏱
+                    </span>
+                    <span className="mono">{(roundLeftMs / 1000).toFixed(1)}s to answer</span>
+                    <div className="hilo-round-timer-bar">
+                      <div
+                        className="hilo-round-timer-fill"
+                        style={{
+                          transform: `scaleX(${Math.min(1, roundLeftMs / ROUND_ANSWER_MS)})`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
                 <div className="guess-buttons">
                   <button
                     className={`hi ${
@@ -644,7 +704,7 @@ export default function StakedHilo({ mode = "target" }: { mode?: RunMode }) {
                 </div>
               </div>
               <RunCard
-                card={run.next ?? { home: "?", away: "?", category: "goals" }}
+                card={run.next ?? { home: "?", away: "?", year: 0, category: "goals" }}
                 revealed={false}
                 rolling={phase === "rolling"}
                 rollMax={run.current.value ?? 10}
@@ -829,6 +889,7 @@ function RunCard({
           {card.away}
         </span>
       </div>
+      {!!card.year && <span className="match-year mono">{card.year}</span>}
       <div className={`value ${revealed ? stateClass : ""}`}>
         {revealed ? card.value : rolling ? <RollingValue max={rollMax} /> : "?"}
       </div>

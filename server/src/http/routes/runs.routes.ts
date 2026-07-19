@@ -5,13 +5,11 @@ import {
   INFINITE_LADDER_BPS,
   MIN_STAKE_LAMPORTS,
   RUN_ODDS_BPS,
-  assertRunOwner,
   cashoutRun,
   createRun,
-  getRun,
   guessRun,
   listRunsByWallet,
-  runView,
+  refreshRun,
 } from "../../chain/runs.js";
 import { userAddress } from "../../auth/store.js";
 import { HttpError, asyncHandler } from "../errors.js";
@@ -65,10 +63,7 @@ runsRoutes.get(
   requireSession,
   asyncHandler(async (req, res) => {
     const { user } = req as AuthedRequest;
-    const run = getRun(req.params.id);
-    if (!run) throw new HttpError(404, "run não encontrada");
-    assertRunOwner(run, user);
-    res.json(runView(run));
+    res.json(await refreshRun(req.params.id, user));
   }),
 );
 
